@@ -1,0 +1,68 @@
+[20037.404222] usbcore: registered new interface driver rtw89_usb
+[20042.180690] usb 2-1: new high-speed USB device number 13 using xhci_hcd
+[20042.329272] usb 2-1: New USB device found, idVendor=0bda, idProduct=885a, bcdDevice= 0.00
+[20042.329279] usb 2-1: New USB device strings: Mfr=1, Product=2, SerialNumber=0
+[20042.329283] usb 2-1: Product: 802.11ax WLAN Adapter
+[20042.329287] usb 2-1: Manufacturer: Realtek
+[20042.335099] rtw_usb_probe ===>
+[20042.335124] rtw_usb_setup: rtw_usb_parse
+[20042.335127] 
+               usb endpoint descriptor (0):
+[20042.335129] bLength=7
+[20042.335131] bDescriptorType=5
+[20042.335134] bEndpointAddress=84
+[20042.335135] wMaxPacketSize=512
+[20042.335137] bInterval=0
+[20042.335140] 
+               usb endpoint descriptor (1):
+[20042.335142] bLength=7
+[20042.335144] bDescriptorType=5
+[20042.335146] bEndpointAddress=5
+[20042.335149] wMaxPacketSize=512
+[20042.335151] bInterval=0
+[20042.335153] 
+               usb endpoint descriptor (2):
+[20042.335155] bLength=7
+[20042.335157] bDescriptorType=5
+[20042.335159] bEndpointAddress=6
+[20042.335161] wMaxPacketSize=512
+[20042.335163] bInterval=0
+[20042.335166] 
+               usb endpoint descriptor (3):
+[20042.335168] bLength=7
+[20042.335170] bDescriptorType=5
+[20042.335172] bEndpointAddress=7
+[20042.335174] wMaxPacketSize=512
+[20042.335176] bInterval=0
+[20042.335178] 
+               usb endpoint descriptor (4):
+[20042.335180] bLength=7
+[20042.335182] bDescriptorType=5
+[20042.335184] bEndpointAddress=9
+[20042.335186] wMaxPacketSize=512
+[20042.335188] bInterval=0
+[20042.335191] 
+               usb endpoint descriptor (5):
+[20042.335193] bLength=7
+[20042.335195] bDescriptorType=5
+[20042.335197] bEndpointAddress=a
+[20042.335199] wMaxPacketSize=512
+[20042.335201] bInterval=0
+[20042.335203] 
+               usb endpoint descriptor (6):
+[20042.335205] bLength=7
+[20042.335207] bDescriptorType=5
+[20042.335209] bEndpointAddress=b
+[20042.335211] wMaxPacketSize=512
+[20042.335213] bInterval=0
+[20042.335215] 
+               usb endpoint descriptor (7):
+[20042.335217] bLength=7
+[20042.335220] bDescriptorType=5
+[20042.335222] bEndpointAddress=c
+[20042.335224] wMaxPacketSize=512
+[20042.335226] bInterval=0
+[20042.335227] USB_SPEED_HIGH
+[20042.335229] out eps num: 7
+[20042.335248] rtw89_usb: probe of 2-1:1.2 failed with error -22
+
