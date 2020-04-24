@@ -159,8 +159,11 @@ struct rtw89_tx_desc_info {
 	u16 pkt_size;
 	u8 wp_offset;
 	u8 qsel;
+	u8 ch_dma;
+	u8 hdr_llc_len;
 	bool is_bmc;
 	bool en_wd_info;
+	bool wd_page;
 };
 
 struct rtw89_core_tx_request {
@@ -186,6 +189,8 @@ struct rtw89_hci_ops {
 	int (*tx)(struct rtw89_dev *rtwdev,
 		  struct rtw89_core_tx_request *tx_req);
 	void (*reset)(struct rtw89_dev *rtwdev);
+	int (*start)(struct rtw89_dev *rtwdev);
+	void (*stop)(struct rtw89_dev *rtwdev);
 
 	u8 (*read8)(struct rtw89_dev *rtwdev, u32 addr);
 	u16 (*read16)(struct rtw89_dev *rtwdev, u32 addr);
@@ -356,6 +361,16 @@ static inline int rtw89_hci_tx(struct rtw89_dev *rtwdev,
 static inline void rtw89_hci_reset(struct rtw89_dev *rtwdev)
 {
 	rtwdev->hci.ops->reset(rtwdev);
+}
+
+static inline int rtw89_hci_start(struct rtw89_dev *rtwdev)
+{
+	return rtwdev->hci.ops->start(rtwdev);
+}
+
+static inline void rtw89_hci_stop(struct rtw89_dev *rtwdev)
+{
+	rtwdev->hci.ops->stop(rtwdev);
 }
 
 static inline u8 rtw89_read8(struct rtw89_dev *rtwdev, u32 addr)
