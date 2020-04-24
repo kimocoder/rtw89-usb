@@ -632,7 +632,7 @@ static int rtw89_mac_pwr_seq(struct rtw89_dev *rtwdev,
 		if (!cfg)
 			break;
 
-		ret = rtw89_mac_sub_pwr_seq(rtwdev, BIT(2), BIT(0), cfg);
+		ret = rtw89_mac_sub_pwr_seq(rtwdev, BIT(0), BIT(2), cfg);
 		if (ret)
 			return -EBUSY;
 
@@ -643,6 +643,16 @@ static int rtw89_mac_pwr_seq(struct rtw89_dev *rtwdev,
 }
 
 static struct rtw89_pwr_cfg rtw89_pwron_8852a[] = {
+	{0x1086,
+	 PWR_CUT_MSK_ALL,
+	 PWR_INTF_MSK_SDIO,
+	 PWR_BASE_MAC,
+	 PWR_CMD_WRITE, BIT(0), 0},
+	{0x1086,
+	 PWR_CUT_MSK_ALL,
+	 PWR_INTF_MSK_SDIO,
+	 PWR_BASE_MAC,
+	 PWR_CMD_POLL, BIT(1), BIT(1)},
 	{0x0005,
 	 PWR_CUT_MSK_ALL,
 	 PWR_INTF_MSK_ALL,
@@ -706,11 +716,31 @@ static struct rtw89_pwr_cfg rtw89_pwron_8852a[] = {
 };
 
 static struct rtw89_pwr_cfg rtw89_pwroff_8852a[] = {
+	{0x02F0,
+	 PWR_CUT_MSK_ALL,
+	 PWR_INTF_MSK_ALL,
+	 PWR_BASE_MAC,
+	 PWR_CMD_WRITE, 0xFF, 0},
+	{0x02F1,
+	 PWR_CUT_MSK_ALL,
+	 PWR_INTF_MSK_ALL,
+	 PWR_BASE_MAC,
+	 PWR_CMD_WRITE, 0xFF, 0},
 	{0x0006,
 	 PWR_CUT_MSK_ALL,
 	 PWR_INTF_MSK_ALL,
 	 PWR_BASE_MAC,
 	 PWR_CMD_WRITE, BIT(0), BIT(0)},
+	{0x0002,
+	 PWR_CUT_MSK_ALL,
+	 PWR_INTF_MSK_ALL,
+	 PWR_BASE_MAC,
+	 PWR_CMD_WRITE, BIT(1), 0},
+	{0x0082,
+	 PWR_CUT_MSK_ALL,
+	 PWR_INTF_MSK_ALL,
+	 PWR_BASE_MAC,
+	 PWR_CMD_WRITE, BIT(1), 0},
 	{0x0005,
 	 PWR_CUT_MSK_ALL,
 	 PWR_INTF_MSK_ALL,
@@ -721,6 +751,41 @@ static struct rtw89_pwr_cfg rtw89_pwroff_8852a[] = {
 	 PWR_INTF_MSK_ALL,
 	 PWR_BASE_MAC,
 	 PWR_CMD_POLL, BIT(1), 0},
+	{0x0091,
+	 PWR_CUT_MSK_ALL,
+	 PWR_INTF_MSK_ALL,
+	 PWR_BASE_MAC,
+	 PWR_CMD_WRITE, BIT(0), 0},
+	{0x0092,
+	 PWR_CUT_MSK_ALL,
+	 PWR_INTF_MSK_SDIO,
+	 PWR_BASE_MAC,
+	 PWR_CMD_WRITE, BIT(0), 0},
+	{0x0005,
+	 PWR_CUT_MSK_ALL,
+	 PWR_INTF_MSK_USB | PWR_INTF_MSK_SDIO,
+	 PWR_BASE_MAC,
+	 PWR_CMD_WRITE, BIT(4) | BIT(3), BIT(3)},
+	{0x0005,
+	 PWR_CUT_MSK_ALL,
+	 PWR_INTF_MSK_PCIE,
+	 PWR_BASE_MAC,
+	 PWR_CMD_WRITE, BIT(2), BIT(2)},
+	{0x0007,
+	 PWR_CUT_MSK_ALL,
+	 PWR_INTF_MSK_SDIO,
+	 PWR_BASE_MAC,
+	 PWR_CMD_WRITE, BIT(6) | BIT(4), 0},
+	{0x1086,
+	 PWR_CUT_MSK_ALL,
+	 PWR_INTF_MSK_SDIO,
+	 PWR_BASE_MAC,
+	 PWR_CMD_WRITE, BIT(0), BIT(0)},
+	{0x1086,
+	 PWR_CUT_MSK_ALL,
+	 PWR_INTF_MSK_SDIO,
+	 PWR_BASE_MAC,
+	 PWR_CMD_POLL, BIT(1), 0},
 	{0xFFFF,
 	 PWR_CUT_MSK_ALL,
 	 PWR_INTF_MSK_ALL,
@@ -728,12 +793,12 @@ static struct rtw89_pwr_cfg rtw89_pwroff_8852a[] = {
 	 PWR_CMD_END, 0, 0},
 };
 
-struct rtw89_pwr_cfg *pwr_on_seq_8852a[] = {
+static struct rtw89_pwr_cfg *pwr_on_seq_8852a[] = {
 	rtw89_pwron_8852a,
 	NULL
 };
 
-struct rtw89_pwr_cfg *pwr_off_seq_8852a[] = {
+static struct rtw89_pwr_cfg *pwr_off_seq_8852a[] = {
 	rtw89_pwroff_8852a,
 	NULL
 };
@@ -1408,7 +1473,7 @@ static void dle_mix_cfg(struct rtw89_dev *rtwdev, struct rtw89_dle_mem *cfg)
 #define SET_QUOTA(_x, _module, _idx)					\
 	do {								\
 	val = (min_cfg->_x & B_AX_ ## _module ## _MIN_SIZE_MASK) |	\
-	      (max_cfg->_x & B_AX_ ## _module ## _MAX_SIZE_MASK);	\
+	      ((max_cfg->_x << 16)& B_AX_ ## _module ## _MAX_SIZE_MASK);	\
 	rtw89_write32(rtwdev, R_AX_ ## _module ## _QTA ## _idx ## _CFG, val);\
 	} while(0)
 static void wde_quota_cfg(struct rtw89_dev *rtwdev,
@@ -1734,7 +1799,7 @@ static int rx_fltr_init(struct rtw89_dev *rtwdev, u8 band)
 		   u32_encode_bits(3, B_AX_UID_FILTER_MASK);
 	plcp_ftlr = B_AX_CCK_CRC_CHK | B_AX_SIGA_CRC_CHK |
 		    B_AX_VHT_SU_SIGB_CRC_CHK | B_AX_VHT_MU_SIGB_CRC_CHK |
-		    B_AX_HE_SIGB_CRC_CHK | B_AX_DIS_CHK_MIN_LEN;
+		    B_AX_HE_SIGB_CRC_CHK;
 	rtw89_write32(rtwdev, rtw89_mac_reg_by_band(R_AX_RX_FLTR_OPT, band), mac_ftlr);
 	rtw89_write32(rtwdev, rtw89_mac_reg_by_band(R_AX_PLCP_HDR_FLTR, band), plcp_ftlr);
 
@@ -2208,7 +2273,7 @@ static int band1_enable(struct rtw89_dev *rtwdev)
 static int rtw89_mac_enable_imr(struct rtw89_dev *rtwdev, u8 band,
 				enum rtw89_mac_hwmod_sel sel)
 {
-	u32 reg;
+	u32 reg, val;
 	int ret;
 
 	ret = check_mac_en(rtwdev, band, sel);
@@ -2241,10 +2306,10 @@ static int rtw89_mac_enable_imr(struct rtw89_dev *rtwdev, u8 band,
 				  B_AX_NO_RESERVE_PAGE_ERR_IMR);
 
 		reg = rtw89_mac_reg_by_band(R_AX_PTCL_IMR0, band);
-		rtw89_write32_set(rtwdev, reg,
-				  B_AX_F2PCMD_USER_ALLC_ERR_INT_EN |
-				  B_AX_TX_RECORD_PKTID_ERR_INT_EN |
-				  B_AX_FSM_TIMEOUT_ERR_INT_EN);
+		val = B_AX_F2PCMD_USER_ALLC_ERR_INT_EN |
+		      B_AX_TX_RECORD_PKTID_ERR_INT_EN |
+		      B_AX_FSM_TIMEOUT_ERR_INT_EN;
+		rtw89_write32(rtwdev, reg, val);
 
 		reg = rtw89_mac_reg_by_band(R_AX_PHYINFO_ERR_IMR, band);
 		rtw89_write32_set(rtwdev, reg,

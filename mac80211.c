@@ -49,11 +49,21 @@ static int rtw89_ops_start(struct ieee80211_hw *hw)
 		return ret;
 	}
 
+	ret = rtw89_hci_start(rtwdev);
+	if (ret) {
+		rtw89_err(rtwdev, "failed to start hci\n");
+		return ret;
+	}
+
 	return 0;
 }
 
 static void rtw89_ops_stop(struct ieee80211_hw *hw)
 {
+	struct rtw89_dev *rtwdev = hw->priv;
+
+	rtw89_hci_stop(rtwdev);
+	rtw89_mac_pwr_off(rtwdev);
 }
 
 static int rtw89_ops_config(struct ieee80211_hw *hw, u32 changed)

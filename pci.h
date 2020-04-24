@@ -152,6 +152,9 @@
 #define R_AX_CH10_BDRAM_CTRL	0x1320
 #define R_AX_CH11_BDRAM_CTRL	0x1324
 #define R_AX_CH12_BDRAM_CTRL	0x1228
+#define BDRAM_SIDX_MASK		GENMASK(7, 0)
+#define BDRAM_MAX_MASK		GENMASK(15, 8)
+#define BDRAM_MIN_MASK		GENMASK(23, 16)
 
 #define R_AX_PCIE_INIT_CFG1	0x1000
 #define B_AX_PCIE_RXRST_KEEP_REG	BIT(23)
@@ -191,10 +194,12 @@
 #define B_AX_STOP_ACH0			BIT(8)
 #define B_AX_STOP_RPQ			BIT(1)
 #define B_AX_STOP_RXQ			BIT(0)
+#define B_AX_TX_STOP1_ALL		GENMASK(18, 8)
 
 #define R_AX_PCIE_DMA_STOP2	0x1310
 #define B_AX_STOP_CH11			BIT(1)
 #define B_AX_STOP_CH10			BIT(0)
+#define B_AX_TX_STOP2_ALL		GENMASK(1, 0)
 
 #define R_AX_TXBD_RWPTR_CLR1	0x1014
 #define B_AX_CLR_CH12_IDX		BIT(10)
@@ -273,6 +278,12 @@ enum rtw89_pci_rx_channel {
 	/* keep last */
 	RTW89_PCI_RXCH_NUM,
 	RTW89_PCI_RXCH_MAX = RTW89_PCI_RXCH_NUM - 1
+};
+
+struct rtw89_pci_bd_ram {
+	u8 start_idx;
+	u8 max_num;
+	u8 min_num;
 };
 
 struct rtw89_pci_tx_data {
@@ -355,7 +366,9 @@ struct rtw89_pci_dma_ring {
 
 	u32 addr_num;
 	u32 addr_idx;
-	u32 addr_desa;
+	u32 addr_bdram;
+	u32 addr_desa_l;
+	u32 addr_desa_h;
 
 	u32 len;
 	u32 wp; /* host idx */
@@ -379,6 +392,7 @@ struct rtw89_pci_tx_ring {
 	struct rtw89_pci_tx_wd_ring wd_ring;
 	struct rtw89_pci_dma_ring bd_ring;
 	struct list_head busy_pages;
+	bool dma_enabled;
 	u16 tag; /* range from 0x0001 ~ 0x1fff */
 };
 

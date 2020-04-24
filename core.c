@@ -108,12 +108,24 @@ static void
 rtw89_core_tx_update_mgmt_info(struct rtw89_dev *rtwdev,
 			       struct rtw89_core_tx_request *tx_req)
 {
+	struct rtw89_tx_desc_info *desc_info = &tx_req->desc_info;
+
+	desc_info->wp_offset = 0;
+	desc_info->ch_dma = RTW89_DMA_B0MG; /* TODO: check B0/B1 */
+	desc_info->qsel = 0x12;
+	desc_info->hdr_llc_len = 24;
 }
 
 static void
 rtw89_core_tx_update_data_info(struct rtw89_dev *rtwdev,
 			       struct rtw89_core_tx_request *tx_req)
 {
+	struct rtw89_tx_desc_info *desc_info = &tx_req->desc_info;
+
+	desc_info->wp_offset = 56;
+	desc_info->ch_dma = RTW89_DMA_ACH0; /* TODO: mapping TID ? */
+	desc_info->qsel = 0; /* TODO: qsel for WMM data frames */
+	desc_info->hdr_llc_len = 26; /* TODO QoS ? */
 }
 
 static void
@@ -133,6 +145,7 @@ rtw89_core_tx_update_desc_info(struct rtw89_dev *rtwdev,
 	tx_req->tx_type = tx_type;
 	desc_info->pkt_size = skb->len;
 	desc_info->is_bmc = is_bmc;
+	desc_info->wd_page = true;
 
 	switch (tx_type) {
 	case RTW89_CORE_TX_TYPE_MGMT:
@@ -177,7 +190,10 @@ void rtw89_core_fill_txdesc(struct rtw89_dev *rtwdev,
 	u32 dword;
 
 	dword = FIELD_PREP(RTW89_TXWD_WP_OFFSET, desc_info->wp_offset) |
-		FIELD_PREP(RTW89_TXWD_WD_INFO_EN, desc_info->en_wd_info);
+		FIELD_PREP(RTW89_TXWD_WD_INFO_EN, desc_info->en_wd_info) |
+		FIELD_PREP(RTW89_TXWD_HDR_LLC_LEN, desc_info->hdr_llc_len) |
+		FIELD_PREP(RTW89_TXWD_WD_PAGE, desc_info->wd_page) |
+		FIELD_PREP(RTW89_TXWD_CHANNEL_DMA, desc_info->ch_dma);
 	txwd_body->dword0 = cpu_to_le32(dword);
 
 	dword = FIELD_PREP(RTW89_TXWD_TXPKT_SIZE, desc_info->pkt_size) |
