@@ -63,13 +63,14 @@ static int rtw89_ops_start(struct ieee80211_hw *hw)
 
 static void rtw89_ops_stop(struct ieee80211_hw *hw)
 {
-	struct rtw89_dev *rtwdev = hw->priv;
-
 	pr_info("%s ==>\n", __func__);
 	return;
+#if 0
+	struct rtw89_dev *rtwdev = hw->priv;
 
 	rtw89_hci_stop(rtwdev);
 	rtw89_mac_pwr_off(rtwdev);
+#endif
 }
 
 static int rtw89_ops_config(struct ieee80211_hw *hw, u32 changed)
