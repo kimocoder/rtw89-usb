@@ -7,9 +7,9 @@
 #define RTW_USB_CONTROL_MSG_TIMEOUT	500
 
 #define RTW_USB_IS_FULL_SPEED_USB(rtwusb) \
-	(rtwusb->usb_speed == RTW_USB_SPEED_1_1)
-#define RTW_USB_IS_HIGH_SPEED(rtwusb)	(rtwusb->usb_speed == RTW_USB_SPEED_2)
-#define RTW_USB_IS_SUPER_SPEED(rtwusb)	(rtwusb->usb_speed == RTW_USB_SPEED_3)
+	((rtwusb)->usb_speed == RTW_USB_SPEED_1_1)
+#define RTW_USB_IS_HIGH_SPEED(rtwusb)	((rtwusb)->usb_speed == RTW_USB_SPEED_2)
+#define RTW_USB_IS_SUPER_SPEED(rtwusb)	((rtwusb)->usb_speed == RTW_USB_SPEED_3)
 
 #define RTW_USB_SUPER_SPEED_BULK_SIZE	1024
 #define RTW_USB_HIGH_SPEED_BULK_SIZE	512
@@ -62,7 +62,7 @@
 	.driver_info = hw_config,
 
 /* defined functions */
-#define rtw_get_usb_priv(rtwdev) ((struct rtw_usb *)rtwdev->priv)
+#define rtw_get_usb_priv(rtwdev) (struct rtw_usb *)((rtwdev)->priv)
 
 enum rtw_usb_burst_size {
 	USB_BURST_SIZE_3_0 = 0x0,
@@ -79,13 +79,13 @@ enum rtw_usb_speed {
 	RTW_USB_SPEED_3		= 3,
 };
 
-struct rtw_event {
+struct rtw_usb_event {
 	atomic_t event_condition;
 	wait_queue_head_t event_queue;
 };
 
-struct rtw_handler {
-	struct rtw_event event;
+struct rtw_usb_handler {
+	struct rtw_usb_event event;
 	atomic_t handler_done;
 };
 
@@ -96,7 +96,7 @@ struct rx_usb_ctrl_block {
 	u8 ep_num;
 };
 
-struct rtw_work_data {
+struct rtw_usb_work_data {
 	struct work_struct work;
 	struct rtw89_dev *rtwdev;
 };
@@ -118,21 +118,14 @@ struct rtw_usb {
 
 	u8 num_in_pipes;
 	u8 num_out_pipes;
-	unsigned int pipe_interrupt;
-	unsigned int pipe_in;
-	unsigned int pipe_out[20];
+	u8 pipe_interrupt;
+	u8 pipe_in;
 	u8 out_ep[RTW_USB_MAX_EP_OUT_NUM];
 	u8 out_ep_queue_sel;
-	//u8 out_ep_num;
-	int nr_out_eps;
 	u8 queue_to_pipe[8];
 	u32 bulkout_size;
 	u8  usb_speed;
 
-	//struct list_head urb_list;
-	atomic_t is_bus_drv_ready;
-
-	// workqueue
 	struct workqueue_struct *txwq, *rxwq;
 
 	// TX
@@ -141,22 +134,20 @@ struct rtw_usb {
 	u32 txdesc_offset;
 	// TX - workqueue
 	bool init_done;
-	struct mutex tx_lock; /* mutex for tx */
 	struct sk_buff_head tx_queue[RTW89_DMA_CH_NUM];
 	struct sk_buff_head tx_ack_queue;
-	struct rtw_handler tx_handler;
-	struct rtw_work_data *tx_handler_data;
+	struct rtw_usb_handler tx_handler;
+	struct rtw_usb_work_data *tx_handler_data;
 
 	// RX
 	// RX - workqueue
 	struct rx_usb_ctrl_block rx_cb[RTW_USB_RXCB_NUM];
 	struct sk_buff_head rx_queue;
-	struct rtw_handler rx_handler;
-	struct rtw_work_data *rx_handler_data;
+	struct rtw_usb_handler rx_handler;
+	struct rtw_usb_work_data *rx_handler_data;
 };
 
-static inline struct
-rtw_usb_tx_data *rtw_usb_get_tx_data(struct sk_buff *skb)
+static inline struct rtw_usb_tx_data *rtw_usb_get_tx_data(struct sk_buff *skb)
 {
 	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
 
