@@ -67,10 +67,9 @@ static void rtw89_ops_stop(struct ieee80211_hw *hw)
 
 	pr_info("%s ==>\n", __func__);
 	return;
-#if 0
+
 	rtw89_hci_stop(rtwdev);
 	rtw89_mac_pwr_off(rtwdev);
-#endif
 }
 
 static int rtw89_ops_config(struct ieee80211_hw *hw, u32 changed)
