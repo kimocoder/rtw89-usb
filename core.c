@@ -351,6 +351,8 @@ static void rtw89_core_deinit(struct rtw89_dev *rtwdev)
 {
 	rtw89_core_clr_supported_band(rtwdev);
 	tasklet_kill(&rtwdev->txq_tasklet);
+	if (!rtwdev->fw.bin_info)
+		kfree(rtwdev->fw.bin_info);
 }
 
 static int rtw89_core_register_hw(struct rtw89_dev *rtwdev)

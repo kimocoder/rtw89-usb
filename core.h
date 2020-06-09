@@ -54,6 +54,7 @@
 })
 
 struct rtw89_dev;
+struct rtw89_fw_bin_info;
 
 extern const struct ieee80211_ops rtw89_ops;
 extern const struct rtw89_chip_info rtw8852a_chip_info;
@@ -327,6 +328,7 @@ struct rtw89_fw_info {
 	const struct firmware *firmware;
 	struct rtw89_dev *rtwdev;
 	struct completion completion;
+	struct rtw89_fw_bin_info *bin_info;
 	u16 ver;
 	u8 sub_ver;
 	u8 sub_idex;

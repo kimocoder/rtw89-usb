@@ -2284,7 +2284,7 @@ static int rtw89_mac_dbcc_enable(struct rtw89_dev *rtwdev, bool enable)
 	return 0;
 }
 
-static int rttw89_mac_trx_init(struct rtw89_dev *rtwdev)
+static int rtw89_mac_trx_init(struct rtw89_dev *rtwdev)
 {
 	enum rtw89_qta_mode qta_mode = rtwdev->mac.dle_info.qta_mode;
 	int ret;
@@ -2408,7 +2408,12 @@ int rtw89_mac_init(struct rtw89_dev *rtwdev)
 		return ret;
 
 	pr_info("mac trx init\n");
-	ret = rttw89_mac_trx_init(rtwdev);
+	ret = rtw89_mac_trx_init(rtwdev);
+	if (ret)
+		return ret;
+
+	pr_info("wait request firmware\n");
+	ret = rtw89_fw_wait_completion(rtwdev);
 	if (ret)
 		return ret;
 

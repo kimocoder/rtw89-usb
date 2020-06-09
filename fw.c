@@ -135,15 +135,60 @@ fwdl_err:
 	return ret;
 }
 
+int rtw89_fw_wait_completion(struct rtw89_dev *rtwdev)
+{
+	struct rtw89_fw_info *fw_info = &rtwdev->fw;
+
+	wait_for_completion(&fw_info->completion);
+	if (!fw_info->firmware)
+		return -EINVAL;
+
+	return 0;
+}
+
 static void rtw89_fw_request_cb(const struct firmware *firmware, void *context)
 {
 	struct rtw89_fw_info *fw_info = context;
 	struct rtw89_dev *rtwdev = fw_info->rtwdev;
-	const struct rtw89_fw_hdr *fw_hdr;
+	int ret;
 
-	pr_info("TODO: %s: firmware size=%llu\n", __func__, firmware->size);
-	//fw_hdr = (const struct rtw89_fw_hdr *)firmware->data;
-	//rtw89_fw_update_ver(rtwdev, fw_hdr);
+	if (!firmware || !firmware->data) {
+		rtw89_err(rtwdev, "failed to request firmware\n");
+		goto err_out;
+	}
+
+	pr_info("%s: firmware size=%llu\n", __func__, firmware->size);
+	fw_info->firmware = firmware;
+	fw_info->bin_info = kmalloc(sizeof(*fw_info->bin_info), GFP_ATOMIC);
+	if (!fw_info->bin_info) {
+		rtw89_err(rtwdev, "failed to allocate bin_info\n");
+		goto err_out;
+	}
+
+	ret = rtw89_fw_hdr_parser(rtwdev, firmware->data, firmware->size,
+				  fw_info->bin_info);
+	if (ret) {
+		rtw89_err(rtwdev, "failed to parse fw header\n");
+		goto err_free_bin_info;
+	}
+
+	rtw89_fw_update_ver(rtwdev, (struct rtw89_fw_hdr *)firmware->data);
+	rtw89_info(rtwdev, "FW ver:%d.%d.%d\n",
+		   fw_info->ver, fw_info->sub_ver, fw_info->sub_idex);
+	rtw89_info(rtwdev, "FW build time: %d/%d/%d %d:%d\n",
+		   fw_info->build_year, fw_info->build_mon, fw_info->build_date,
+		   fw_info->build_hour, fw_info->build_min);
+
+	complete_all(&fw_info->completion);
+
+	return;
+
+err_free_bin_info:
+	kfree(fw_info->bin_info);
+
+err_out:
+	fw_info->firmware = NULL;
+	complete_all(&fw_info->completion);
 }
 
 int rtw89_fw_request(struct rtw89_dev *rtwdev)
@@ -152,9 +197,8 @@ int rtw89_fw_request(struct rtw89_dev *rtwdev)
 	const char *fw_name = rtwdev->chip->fw_name;
 	int ret;
 
-	pr_info("TODO %s FW name %s==>\n", __func__, fw_name);
-
 	fw_info->rtwdev = rtwdev;
+	fw_info->bin_info = NULL;
 	init_completion(&fw_info->completion);
 
 	ret = request_firmware_nowait(THIS_MODULE, true, fw_name, rtwdev->dev,
@@ -166,3 +210,4 @@ int rtw89_fw_request(struct rtw89_dev *rtwdev)
 
 	return 0;
 }
+
