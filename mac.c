@@ -2370,13 +2370,6 @@ static int rtw89_mac_enable_cpu(struct rtw89_dev *rtwdev, u8 boot_reason,
 	return 0;
 }
 
-int rtw89_download_firmware(struct rtw89_dev *rtwdev)
-{
-	/* fw.c */
-	pr_info("TODO: %s \n", __func__);
-	return -EINVAL;	
-}
-
 int rtw89_mac_init(struct rtw89_dev *rtwdev)
 {
 	int ret;
@@ -2418,9 +2411,12 @@ int rtw89_mac_init(struct rtw89_dev *rtwdev)
 		return ret;
 
 	pr_info("download firmware\n");
-	ret = rtw89_download_firmware(rtwdev);
+	ret = rtw89_fw_download(rtwdev);
 	if (ret)
 		return ret; 
+
+	pr_info("%s: stop here first\n", __func__);
+	return -EINVAL;
 
 	if (rtwdev->hci.ops->mac_post_init) {
 		ret = rtwdev->hci.ops->mac_post_init(rtwdev);

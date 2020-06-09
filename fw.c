@@ -106,30 +106,31 @@ static void rtw89_fw_update_ver(struct rtw89_dev *rtwdev,
 	fw_info->rec_seq = 0;
 }
 
-int rtw89_fw_download(struct rtw89_dev *rtwdev, u8 *fw, u32 len)
+static int rtw89_fw_poll_ready(struct rtw89_dev *rtwdev, u8 rbit)
 {
-	struct rtw89_fw_bin_info info;
 	u32 cnt = FWDL_WAIT_CNT;
-	int ret;
-
-	ret = rtw89_fw_hdr_parser(rtwdev, fw, len, &info);
-	if (ret) {
-		rtw89_err(rtwdev, "parse fw header fail\n");
-		goto fwdl_err;
-	}
-
-	rtw89_fw_update_ver(rtwdev, (struct rtw89_fw_hdr *)fw);
 
 	while (--cnt) {
-		if (rtw89_read8(rtwdev, R_AX_WCPU_FW_CTRL) & B_AX_H2C_PATH_RDY)
+		if (rtw89_read8(rtwdev, R_AX_WCPU_FW_CTRL) & rbit)
 			break;
 		udelay(1);
 	}
+
 	if (!cnt) {
 		rtw89_err(rtwdev, "[ERR]H2C path ready\n");
-		ret = -EBUSY;
-		goto fwdl_err;
+		return -EBUSY;
 	}
+
+	return 0;
+}
+
+int rtw89_fw_download(struct rtw89_dev *rtwdev)
+{
+	int ret;
+
+	// fwdl_phase0
+	ret = rtw89_fw_poll_ready(rtwdev, B_AX_H2C_PATH_RDY);
+	pr_info("fwdl_phase0 success\n");
 
 fwdl_err:
 	return ret;

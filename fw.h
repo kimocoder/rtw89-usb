@@ -90,5 +90,6 @@ struct rtw89_fw_hdr {
 int rtw89_fw_check_rdy(struct rtw89_dev *rtwdev);
 int rtw89_fw_request(struct rtw89_dev *rtwdev);
 int rtw89_fw_wait_completion(struct rtw89_dev *rtwdev);
+int rtw89_fw_download(struct rtw89_dev *rtwdev);
 
 #endif
