@@ -643,16 +643,6 @@ static int rtw89_mac_pwr_seq(struct rtw89_dev *rtwdev,
 }
 
 static struct rtw89_pwr_cfg rtw89_pwron_8852a[] = {
-	{0x1086,
-	 PWR_CUT_MSK_ALL,
-	 PWR_INTF_MSK_SDIO,
-	 PWR_BASE_MAC,
-	 PWR_CMD_WRITE, BIT(0), 0},
-	{0x1086,
-	 PWR_CUT_MSK_ALL,
-	 PWR_INTF_MSK_SDIO,
-	 PWR_BASE_MAC,
-	 PWR_CMD_POLL, BIT(1), BIT(1)},
 	{0x0005,
 	 PWR_CUT_MSK_ALL,
 	 PWR_INTF_MSK_ALL,
@@ -716,31 +706,11 @@ static struct rtw89_pwr_cfg rtw89_pwron_8852a[] = {
 };
 
 static struct rtw89_pwr_cfg rtw89_pwroff_8852a[] = {
-	{0x02F0,
-	 PWR_CUT_MSK_ALL,
-	 PWR_INTF_MSK_ALL,
-	 PWR_BASE_MAC,
-	 PWR_CMD_WRITE, 0xFF, 0},
-	{0x02F1,
-	 PWR_CUT_MSK_ALL,
-	 PWR_INTF_MSK_ALL,
-	 PWR_BASE_MAC,
-	 PWR_CMD_WRITE, 0xFF, 0},
 	{0x0006,
 	 PWR_CUT_MSK_ALL,
 	 PWR_INTF_MSK_ALL,
 	 PWR_BASE_MAC,
 	 PWR_CMD_WRITE, BIT(0), BIT(0)},
-	{0x0002,
-	 PWR_CUT_MSK_ALL,
-	 PWR_INTF_MSK_ALL,
-	 PWR_BASE_MAC,
-	 PWR_CMD_WRITE, BIT(1), 0},
-	{0x0082,
-	 PWR_CUT_MSK_ALL,
-	 PWR_INTF_MSK_ALL,
-	 PWR_BASE_MAC,
-	 PWR_CMD_WRITE, BIT(1), 0},
 	{0x0005,
 	 PWR_CUT_MSK_ALL,
 	 PWR_INTF_MSK_ALL,
@@ -749,41 +719,6 @@ static struct rtw89_pwr_cfg rtw89_pwroff_8852a[] = {
 	{0x0005,
 	 PWR_CUT_MSK_ALL,
 	 PWR_INTF_MSK_ALL,
-	 PWR_BASE_MAC,
-	 PWR_CMD_POLL, BIT(1), 0},
-	{0x0091,
-	 PWR_CUT_MSK_ALL,
-	 PWR_INTF_MSK_ALL,
-	 PWR_BASE_MAC,
-	 PWR_CMD_WRITE, BIT(0), 0},
-	{0x0092,
-	 PWR_CUT_MSK_ALL,
-	 PWR_INTF_MSK_SDIO,
-	 PWR_BASE_MAC,
-	 PWR_CMD_WRITE, BIT(0), 0},
-	{0x0005,
-	 PWR_CUT_MSK_ALL,
-	 PWR_INTF_MSK_USB | PWR_INTF_MSK_SDIO,
-	 PWR_BASE_MAC,
-	 PWR_CMD_WRITE, BIT(4) | BIT(3), BIT(3)},
-	{0x0005,
-	 PWR_CUT_MSK_ALL,
-	 PWR_INTF_MSK_PCIE,
-	 PWR_BASE_MAC,
-	 PWR_CMD_WRITE, BIT(2), BIT(2)},
-	{0x0007,
-	 PWR_CUT_MSK_ALL,
-	 PWR_INTF_MSK_SDIO,
-	 PWR_BASE_MAC,
-	 PWR_CMD_WRITE, BIT(6) | BIT(4), 0},
-	{0x1086,
-	 PWR_CUT_MSK_ALL,
-	 PWR_INTF_MSK_SDIO,
-	 PWR_BASE_MAC,
-	 PWR_CMD_WRITE, BIT(0), BIT(0)},
-	{0x1086,
-	 PWR_CUT_MSK_ALL,
-	 PWR_INTF_MSK_SDIO,
 	 PWR_BASE_MAC,
 	 PWR_CMD_POLL, BIT(1), 0},
 	{0xFFFF,
@@ -816,6 +751,7 @@ static int rtw89_mac_power_switch(struct rtw89_dev *rtwdev, bool on)
 		cfg_seq = pwr_off_seq_8852a;
 
 	val = rtw89_read8(rtwdev, 0x3F1) & 0x3;
+	pr_info("%s: 0x3F1 val=%d\n", __func__, val);
 	if (on && val == PWR_ACT) {
 		rtw89_err(rtwdev, "MAC has already powered on\n");
 		return -EBUSY;
@@ -932,17 +868,15 @@ static int dmac_func_en(struct rtw89_dev *rtwdev)
 		 B_AX_STA_SCH_CLK_EN | B_AX_TXPKT_CTRL_CLK_EN |
 		 B_AX_WD_RLS_CLK_EN);
 	rtw89_write32(rtwdev, R_AX_DMAC_CLK_EN, val32);
-/*
-	if (intf == MAC_AX_INTF_PCIE) {
-*/
-	ret = rst_bdram_pcie(rtwdev, 0);
-	if (ret) {
-		rtw89_err(rtwdev, "[ERR]dmac en rst pcie bdram %d\n", ret);
-		return ret;
+
+	if (rtwdev->hci.type == RTW89_HCI_TYPE_PCIE) {
+		ret = rst_bdram_pcie(rtwdev, 0);
+		if (ret) {
+			rtw89_err(rtwdev, "[ERR]dmac en rst pcie bdram %d\n", ret);
+			return ret;
+		}
 	}
-/*
-	}
-*/
+
 	return ret;
 }
 
@@ -2436,10 +2370,19 @@ static int rtw89_mac_enable_cpu(struct rtw89_dev *rtwdev, u8 boot_reason,
 	return 0;
 }
 
+int rtw89_download_firmware(struct rtw89_dev *rtwdev)
+{
+	/* fw.c */
+	pr_info("TODO: %s \n", __func__);
+	return -EINVAL;	
+}
+
 int rtw89_mac_init(struct rtw89_dev *rtwdev)
 {
 	int ret;
 
+	pr_info("%s ==>\n", __func__);
+	pr_info("mac power switch\n");
 	ret = rtw89_mac_power_switch(rtwdev, true);
 	if (ret) {
 		rtw89_mac_power_switch(rtwdev, false);
@@ -2448,24 +2391,31 @@ int rtw89_mac_init(struct rtw89_dev *rtwdev)
 			return ret;
 	}
 
+	pr_info("mac enable cpu\n");
 	ret = rtw89_mac_enable_cpu(rtwdev, 0, true);
 	if (ret)
 		return ret;
 
-//TODO: add dl fw
 	if (rtwdev->hci.ops->mac_pre_init) {
 		ret = rtwdev->hci.ops->mac_pre_init(rtwdev);
 		if (ret)
 			return ret;
 	}
 
+	pr_info("mac sys init\n");
 	ret = rtw89_mac_sys_init(rtwdev);
 	if (ret)
 		return ret;
 
+	pr_info("mac trx init\n");
 	ret = rttw89_mac_trx_init(rtwdev);
 	if (ret)
 		return ret;
+
+	pr_info("download firmware\n");
+	ret = rtw89_download_firmware(rtwdev);
+	if (ret)
+		return ret; 
 
 	if (rtwdev->hci.ops->mac_post_init) {
 		ret = rtwdev->hci.ops->mac_post_init(rtwdev);

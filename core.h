@@ -7,6 +7,7 @@
 
 #include <net/mac80211.h>
 #include <linux/bitfield.h>
+#include <linux/firmware.h>
 
 /**
  * read_poll_timeout - Periodically poll an address until a condition is
@@ -230,6 +231,7 @@ enum rtw89_dma_ch {
 
 struct rtw89_chip_info {
 	const struct rtw89_chip_ops *ops;
+	const char *fw_name;
 	u32 fifo_size;
 };
 
@@ -322,6 +324,9 @@ struct rtw89_mac_info {
 };
 
 struct rtw89_fw_info {
+	const struct firmware *firmware;
+	struct rtw89_dev *rtwdev;
+	struct completion completion;
 	u16 ver;
 	u8 sub_ver;
 	u8 sub_idex;

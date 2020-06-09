@@ -8,6 +8,7 @@
 #include "txrx.h"
 #include "debug.h"
 #include "mac.h"
+#include "fw.h"
 
 static struct ieee80211_channel rtw89_channels_2ghz[] = {
 	{ .center_freq = 2412, .hw_value = 1, },
@@ -330,6 +331,12 @@ static int rtw89_core_init(struct rtw89_dev *rtwdev)
 	INIT_LIST_HEAD(&rtwdev->txqs);
 	tasklet_init(&rtwdev->txq_tasklet, rtw89_core_txq_tasklet, data);
 	spin_lock_init(&rtwdev->txq_lock);
+
+	ret = rtw89_fw_request(rtwdev);
+	if (ret) {
+		rtw89_err(rtwdev, "failed to request firmware\n");
+		return ret;
+	}
 
 	ret = rtw89_core_set_supported_band(rtwdev);
 	if (ret) {

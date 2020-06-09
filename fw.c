@@ -134,3 +134,35 @@ int rtw89_fw_download(struct rtw89_dev *rtwdev, u8 *fw, u32 len)
 fwdl_err:
 	return ret;
 }
+
+static void rtw89_fw_request_cb(const struct firmware *firmware, void *context)
+{
+	struct rtw89_fw_info *fw_info = context;
+	struct rtw89_dev *rtwdev = fw_info->rtwdev;
+	const struct rtw89_fw_hdr *fw_hdr;
+
+	pr_info("TODO: %s: firmware size=%llu\n", __func__, firmware->size);
+	//fw_hdr = (const struct rtw89_fw_hdr *)firmware->data;
+	//rtw89_fw_update_ver(rtwdev, fw_hdr);
+}
+
+int rtw89_fw_request(struct rtw89_dev *rtwdev)
+{
+	struct rtw89_fw_info *fw_info = &rtwdev->fw;
+	const char *fw_name = rtwdev->chip->fw_name;
+	int ret;
+
+	pr_info("TODO %s FW name %s==>\n", __func__, fw_name);
+
+	fw_info->rtwdev = rtwdev;
+	init_completion(&fw_info->completion);
+
+	ret = request_firmware_nowait(THIS_MODULE, true, fw_name, rtwdev->dev,
+			GFP_KERNEL, fw_info, rtw89_fw_request_cb);
+	if (ret) {
+		rtw89_err(rtwdev, "failed to async firmware request\n");
+		return ret;
+	}
+
+	return 0;
+}

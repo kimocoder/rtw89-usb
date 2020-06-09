@@ -88,5 +88,6 @@ struct rtw89_fw_hdr {
 } __packed;
 
 int rtw89_fw_check_rdy(struct rtw89_dev *rtwdev);
+int rtw89_fw_request(struct rtw89_dev *rtwdev);
 
 #endif

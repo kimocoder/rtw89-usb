@@ -42,15 +42,15 @@ static int rtw89_ops_start(struct ieee80211_hw *hw)
 	struct rtw89_dev *rtwdev = hw->priv;
 	int ret;
 
-	pr_info("%s ==>\n", __func__);
-	return -EINVAL;
-
 	rtwdev->mac.dle_info.qta_mode = RTW89_QTA_SCC_WD128;
 	ret = rtw89_mac_init(rtwdev);
 	if (ret) {
 		rtw89_err(rtwdev, "mac init fail, ret:%d\n", ret);
 		return ret;
 	}
+
+	pr_info("%s ==>\n", __func__);
+	return -EINVAL;
 
 	ret = rtw89_hci_start(rtwdev);
 	if (ret) {
