@@ -67,6 +67,7 @@ enum rtw89_hci_type {
 
 enum rtw89_core_chip_id {
 	RTL8852A,
+	RTL8852B,
 };
 
 enum rtw89_core_tx_type {
@@ -166,6 +167,9 @@ struct rtw89_tx_desc_info {
 	bool is_bmc;
 	bool en_wd_info;
 	bool wd_page;
+	bool use_rate;
+	bool dis_data_fb;
+	u16 data_rate;
 };
 
 struct rtw89_core_tx_request {
@@ -231,6 +235,7 @@ enum rtw89_dma_ch {
 };
 
 struct rtw89_chip_info {
+	enum rtw89_core_chip_id chip_id;
 	const struct rtw89_chip_ops *ops;
 	const char *fw_name;
 	u32 fifo_size;

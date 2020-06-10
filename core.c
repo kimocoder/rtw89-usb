@@ -111,10 +111,14 @@ rtw89_core_tx_update_mgmt_info(struct rtw89_dev *rtwdev,
 {
 	struct rtw89_tx_desc_info *desc_info = &tx_req->desc_info;
 
+	desc_info->en_wd_info = true;
 	desc_info->wp_offset = 0;
 	desc_info->ch_dma = RTW89_DMA_B0MG; /* TODO: check B0/B1 */
 	desc_info->qsel = 0x12;
 	desc_info->hdr_llc_len = 24;
+	desc_info->use_rate = true;
+	desc_info->dis_data_fb = true;
+	desc_info->data_rate = 0x80;
 }
 
 static void
@@ -205,6 +209,10 @@ void rtw89_core_fill_txdesc(struct rtw89_dev *rtwdev,
 		return;
 
 	txwd_info = txdesc + sizeof(*txwd_body);
+	dword = FIELD_PREP(RTW89_TXWD_USE_RATE, desc_info->use_rate) |
+		FIELD_PREP(RTW89_TXWD_DATA_RATE, desc_info->data_rate) |
+		FIELD_PREP(RTW89_TXWD_DISDATAFB, desc_info->dis_data_fb);
+	txwd_info->dword0 = dword;
 }
 EXPORT_SYMBOL(rtw89_core_fill_txdesc);
 

@@ -9,8 +9,8 @@
 #include "fw.h"
 #include "pci.h"
 
-static int check_mac_en(struct rtw89_dev *rtwdev, u8 band,
-			enum rtw89_mac_hwmod_sel sel)
+int rtw89_mac_check_mac_en(struct rtw89_dev *rtwdev, u8 band,
+			   enum rtw89_mac_hwmod_sel sel)
 {
 	u32 val, r_val;
 
@@ -385,7 +385,7 @@ static int hfc_ch_ctrl(struct rtw89_dev *rtwdev, u8 ch)
 	int ret = 0;
 	u32 val = 0;
 
-	ret = check_mac_en(rtwdev, 0, RTW89_DMAC_SEL);
+	ret = rtw89_mac_check_mac_en(rtwdev, 0, RTW89_DMAC_SEL);
 	if (ret)
 		return ret;
 
@@ -412,7 +412,7 @@ static int hfc_upd_ch_info(struct rtw89_dev *rtwdev, u8 ch)
 	u32 val;
 	u32 ret;
 
-	ret = check_mac_en(rtwdev, 0, RTW89_DMAC_SEL);
+	ret = rtw89_mac_check_mac_en(rtwdev, 0, RTW89_DMAC_SEL);
 	if (ret)
 		return ret;
 
@@ -435,7 +435,7 @@ static int hfc_pub_ctrl(struct rtw89_dev *rtwdev)
 	u32 val;
 	int ret;
 
-	ret = check_mac_en(rtwdev, 0, RTW89_DMAC_SEL);
+	ret = rtw89_mac_check_mac_en(rtwdev, 0, RTW89_DMAC_SEL);
 	if (ret)
 		return ret;
 
@@ -462,7 +462,7 @@ static int hfc_upd_mix_info(struct rtw89_dev *rtwdev)
 	u32 val;
 	int ret;
 
-	ret = check_mac_en(rtwdev, 0, RTW89_DMAC_SEL);
+	ret = rtw89_mac_check_mac_en(rtwdev, 0, RTW89_DMAC_SEL);
 	if (ret)
 		return ret;
 
@@ -588,7 +588,7 @@ static int hfc_init(struct rtw89_dev *rtwdev, bool reset, bool en, bool h2c_en)
 	if (ret)
 		return ret;
 
-	ret = check_mac_en(rtwdev, 0, RTW89_DMAC_SEL);
+	ret = rtw89_mac_check_mac_en(rtwdev, 0, RTW89_DMAC_SEL);
 	if (ret)
 		return ret;
 
@@ -806,12 +806,12 @@ static struct rtw89_pwr_cfg rtw89_pwroff_8852a[] = {
 	 PWR_CMD_END, 0, 0},
 };
 
-static struct rtw89_pwr_cfg *pwr_on_seq_8852a[] = {
+struct rtw89_pwr_cfg *pwr_on_seq_8852a[] = {
 	rtw89_pwron_8852a,
 	NULL
 };
 
-static struct rtw89_pwr_cfg *pwr_off_seq_8852a[] = {
+struct rtw89_pwr_cfg *pwr_off_seq_8852a[] = {
 	rtw89_pwroff_8852a,
 	NULL
 };
@@ -1623,7 +1623,7 @@ static int dle_init(struct rtw89_dev *rtwdev, enum rtw89_qta_mode mode)
 	int ret = 0;
 	u32 cnt;
 
-	ret = check_mac_en(rtwdev, 0, RTW89_DMAC_SEL);
+	ret = rtw89_mac_check_mac_en(rtwdev, 0, RTW89_DMAC_SEL);
 	if (ret)
 		return ret;
 
@@ -1691,7 +1691,7 @@ static int sta_sch_init(struct rtw89_dev *rtwdev)
 	u8 val;
 	int ret;
 
-	ret = check_mac_en(rtwdev, 0, RTW89_DMAC_SEL);
+	ret = rtw89_mac_check_mac_en(rtwdev, 0, RTW89_DMAC_SEL);
 	if (ret)
 		return ret;
 
@@ -1721,7 +1721,7 @@ static int mpdu_proc_init(struct rtw89_dev *rtwdev)
 	u32 val;
 	int ret;
 
-	ret = check_mac_en(rtwdev, 0, RTW89_DMAC_SEL);
+	ret = rtw89_mac_check_mac_en(rtwdev, 0, RTW89_DMAC_SEL);
 	if (ret)
 		return ret;
 
@@ -1740,7 +1740,7 @@ static int sec_eng_init(struct rtw89_dev *rtwdev)
 	u32 val = 0;
 	int ret;
 
-	ret = check_mac_en(rtwdev, 0, RTW89_DMAC_SEL);
+	ret = rtw89_mac_check_mac_en(rtwdev, 0, RTW89_DMAC_SEL);
 	if (ret)
 		return ret;
 
@@ -1811,7 +1811,7 @@ static int addr_cam_init(struct rtw89_dev *rtwdev, u8 band)
 	u32 val, cnt, reg;
 	int ret;
 
-	ret = check_mac_en(rtwdev, band, RTW89_CMAC_SEL);
+	ret = rtw89_mac_check_mac_en(rtwdev, band, RTW89_CMAC_SEL);
 	if (ret)
 		return ret;
 
@@ -1841,7 +1841,7 @@ static int scheduler_init(struct rtw89_dev *rtwdev, u8 band)
 	u32 val, reg;
 	u32 ret;
 
-	ret = check_mac_en(rtwdev, band, RTW89_CMAC_SEL);
+	ret = rtw89_mac_check_mac_en(rtwdev, band, RTW89_CMAC_SEL);
 	if (ret)
 		return ret;
 
@@ -1893,7 +1893,7 @@ static int rx_fltr_init(struct rtw89_dev *rtwdev, u8 band)
 	int ret, i;
 	u32 mac_ftlr, plcp_ftlr;
 
-	ret = check_mac_en(rtwdev, band, RTW89_CMAC_SEL);
+	ret = rtw89_mac_check_mac_en(rtwdev, band, RTW89_CMAC_SEL);
 	if (ret)
 		return ret;
 
@@ -1920,7 +1920,7 @@ static int cca_ctrl_init(struct rtw89_dev *rtwdev, u8 band)
 	u32 val, reg;
 	int ret;
 
-	ret = check_mac_en(rtwdev, band, RTW89_CMAC_SEL);
+	ret = rtw89_mac_check_mac_en(rtwdev, band, RTW89_CMAC_SEL);
 	if (ret)
 		return ret;
 
@@ -1958,7 +1958,7 @@ static int spatial_reuse_init(struct rtw89_dev *rtwdev, u8 band)
 	u8 val;
 	int ret;
 
-	ret = check_mac_en(rtwdev, band, RTW89_CMAC_SEL);
+	ret = rtw89_mac_check_mac_en(rtwdev, band, RTW89_CMAC_SEL);
 	if (ret)
 		return ret;
 	reg = rtw89_mac_reg_by_band(R_AX_RX_SR_CTRL, band);
@@ -1974,7 +1974,7 @@ static int tmac_init(struct rtw89_dev *rtwdev, u8 band)
 	u32 val, reg;
 	int ret;
 
-	ret = check_mac_en(rtwdev, band, RTW89_CMAC_SEL);
+	ret = rtw89_mac_check_mac_en(rtwdev, band, RTW89_CMAC_SEL);
 	if (ret)
 		return ret;
 //TODO: ignore loopback mode?
@@ -1994,7 +1994,7 @@ static int rmac_init(struct rtw89_dev *rtwdev, u8 band)
 	u32 reg;
 	u16 val;
 
-	ret = check_mac_en(rtwdev, band, RTW89_CMAC_SEL);
+	ret = rtw89_mac_check_mac_en(rtwdev, band, RTW89_CMAC_SEL);
 	if (ret)
 		return ret;
 
@@ -2017,7 +2017,7 @@ static int cmac_com_init(struct rtw89_dev *rtwdev, u8 band)
 	u32 val, reg;
 	int ret;
 
-	ret = check_mac_en(rtwdev, band, RTW89_CMAC_SEL);
+	ret = rtw89_mac_check_mac_en(rtwdev, band, RTW89_CMAC_SEL);
 	if (ret)
 		return ret;
 
@@ -2101,7 +2101,7 @@ static int set_hw_sch_tx_en(struct rtw89_dev *rtwdev, u8 band, u16 tx_en,
 	u16 val;
 	int ret;
 
-	ret = check_mac_en(rtwdev, band, RTW89_CMAC_SEL);
+	ret = rtw89_mac_check_mac_en(rtwdev, band, RTW89_CMAC_SEL);
 	if (ret)
 		return ret;
 
@@ -2144,7 +2144,7 @@ static int tx_idle_ck(struct rtw89_dev *rtwdev, u8 band)
 	u8 val;
 	int ret;
 
-	ret = check_mac_en(rtwdev, band, RTW89_CMAC_SEL);
+	ret = rtw89_mac_check_mac_en(rtwdev, band, RTW89_CMAC_SEL);
 	if (ret)
 		return ret;
 
@@ -2385,7 +2385,7 @@ static int rtw89_mac_enable_imr(struct rtw89_dev *rtwdev, u8 band,
 	u32 reg, val;
 	int ret;
 
-	ret = check_mac_en(rtwdev, band, sel);
+	ret = rtw89_mac_check_mac_en(rtwdev, band, sel);
 	if (ret) {
 		rtw89_err(rtwdev, "MAC%d band%d is not ready\n", sel, band);
 		return ret;

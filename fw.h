@@ -27,6 +27,12 @@ struct rtw89_fw_hdr_section_info {
 	u32 dladdr;
 };
 
+struct rtw89_fw_bin_info {
+	u8 section_num;
+	u32 hdr_len;
+	struct rtw89_fw_hdr_section_info section_info[FWDL_SECTION_MAX_NUM];
+};
+
 struct rtw89_fw_hdr_section {
 	/* dword0 */
 	u32 dl_addr;
@@ -41,12 +47,6 @@ struct rtw89_fw_hdr_section {
 	/* dword3 */
 	u32 res2;
 } __packed;
-
-struct rtw89_fw_bin_info {
-	u8 section_num;
-	u32 hdr_len;
-	struct rtw89_fw_hdr_section_info section_info[FWDL_SECTION_MAX_NUM];
-};
 
 struct rtw89_fw_hdr {
 	/* dword0 */
