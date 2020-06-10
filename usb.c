@@ -242,8 +242,8 @@ exit:
  * DMA channel
  */
 
-static unsigned int rtw_usb_bulkid_to_pipe(struct rtw89_dev *rtwdev, u32 addr,
-					   bool is_write)
+static unsigned int rtw_usb_get_pipe(struct rtw89_dev *rtwdev, u32 addr,
+				     bool is_write)
 {
 	struct rtw_usb *rtwusb = rtw_get_usb_priv(rtwdev);
 	struct usb_device *usbd = rtwusb->udev;
@@ -348,43 +348,49 @@ static void rtw_usb_indicate_tx_status(struct rtw89_dev *rtwdev,
 	ieee80211_tx_status_irqsafe(hw, skb);
 }
 
-static void rtw_usb_write_port_direct_complete(struct urb *urb)
+static void rtw_usb_write_port_complete(struct urb *urb)
 {
 	struct sk_buff *skb;
+
+	if (!urb->status) { /* success */
+	} else {
+		pr_info("%s: status=%d\n", __func__, urb->status);
+	}
 
 	skb = (struct sk_buff *)urb->context;
 	dev_kfree_skb(skb);
 	usb_free_urb(urb);
 }
-static int rtw_usb_write_port_direct(struct rtw89_dev *rtwdev, u8 addr, u32 cnt,
+
+static int rtw_usb_write_port(struct rtw89_dev *rtwdev, u8 addr, u32 cnt,
 			      struct sk_buff *skb)
 {
-	int ret = -EINVAL;
-
-	return ret;
-#if 0
 	struct rtw_usb *rtwusb = rtw_get_usb_priv(rtwdev);
 	struct usb_device *usbd = rtwusb->udev;
 	struct urb *urb;
 	unsigned int pipe;
+	bool is_write = true;
 	int ret;
 
-	pipe = rtw_usb_get_pipe(rtwusb, addr);
+	pipe = rtw_usb_get_pipe(rtwdev, addr, is_write);
 
 	urb = usb_alloc_urb(0, GFP_ATOMIC);
 	if (!urb)
 		return -ENOMEM;
 
 	usb_fill_bulk_urb(urb, usbd, pipe, skb->data, (int)cnt,
-			  rtw_usb_write_port_direct_complete, skb);
+			  rtw_usb_write_port_complete, skb);
 
+	urb->transfer_flags |= URB_ZERO_PACKET;
 	ret = usb_submit_urb(urb, GFP_ATOMIC);
-	if (unlikely(ret))
+	if (unlikely(ret)) {
+		rtw89_err(rtwdev, "failed to do USB write port\n");
 		usb_free_urb(urb);
+	}
 
 	return ret;
-#endif
 }
+
 static int rtw_usb_write_port_wait(struct rtw89_dev *rtwdev, u8 addr, u32 cnt,
 				   struct sk_buff *skb)
 {
