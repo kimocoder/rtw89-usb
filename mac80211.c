@@ -42,7 +42,11 @@ static int rtw89_ops_start(struct ieee80211_hw *hw)
 	struct rtw89_dev *rtwdev = hw->priv;
 	int ret;
 
-	rtwdev->mac.dle_info.qta_mode = RTW89_QTA_SCC_WD128;
+	if (rtwdev->hci.type == RTW89_HCI_TYPE_PCIE)
+		rtwdev->mac.dle_info.qta_mode = RTW89_QTA_SCC_WD128;
+	else if (rtwdev->hci.type == RTW89_HCI_TYPE_USB)
+		rtwdev->mac.dle_info.qta_mode = RTW89_QTA_DBCC;
+
 	ret = rtw89_mac_init(rtwdev);
 	if (ret) {
 		rtw89_err(rtwdev, "mac init fail, ret:%d\n", ret);

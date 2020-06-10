@@ -178,6 +178,64 @@ static struct rtw89_hfc_prec_cfg hfc_preccfg_pcie_stf = {
 	1 /* WP CH 8-11 full condition */
 };
 
+
+static struct rtw89_hfc_ch_cfg hfc_chcfg_usb_8852a_dbcc[] = {
+	{22, 212, grp_0}, /* ACH 0 */
+	{0, 0, grp_0}, /* ACH 1 */
+	{22, 212, grp_0}, /* ACH 2 */
+	{0, 0, grp_0}, /* ACH 3 */
+	{22, 212, grp_1}, /* ACH 4 */
+	{0, 0, grp_1}, /* ACH 5 */
+	{22, 212, grp_1}, /* ACH 6 */
+	{0, 0, grp_1}, /* ACH 7 */
+	{22, 212, grp_0}, /* B0MGQ */
+	{0, 0, grp_0}, /* B0HIQ */
+	{22, 212, grp_1}, /* B1MGQ */
+	{0, 0, grp_1}, /* B1HIQ */
+	{0, 0, 0} /* FWCMDQ */
+};
+
+static struct rtw89_hfc_pub_cfg hfc_pubcfg_usb_8852a_dbcc = {
+	256, /* Group 0 */
+	256, /* Group 1 */
+	512, /* Public Max */
+	104 /* WP threshold */
+};
+
+static struct rtw89_hfc_ch_cfg hfc_chcfg_usb_8852a_scc[] = {
+	{22, 402, grp_0}, /* ACH 0 */
+	{0, 0, grp_0}, /* ACH 1 */
+	{22, 402, grp_0}, /* ACH 2 */
+	{0, 0, grp_0}, /* ACH 3 */
+	{22, 402, grp_0}, /* ACH 4 */
+	{0, 0, grp_0}, /* ACH 5 */
+	{22, 402, grp_0}, /* ACH 6 */
+	{0, 0, grp_0}, /* ACH 7 */
+	{22, 402, grp_0}, /* B0MGQ */
+	{0, 0, grp_0}, /* B0HIQ */
+	{22, 402, grp_0}, /* B1MGQ */
+	{0, 0, grp_0}, /* B1HIQ */
+	{0, 0, 0} /* FWCMDQ */
+};
+
+static struct rtw89_hfc_pub_cfg hfc_pubcfg_usb_8852a_scc = {
+	512, /* Group 0 */
+	0, /* Group 1 */
+	512, /* Public Max */
+	104 /* WP threshold */
+};
+
+static struct rtw89_hfc_prec_cfg hfc_preccfg_usb = {
+	11, /*CH 0-11 pre-cost */
+	32, /*H2C pre-cost */
+	25, /* WP CH 0-7 pre-cost */
+	25, /* WP CH 8-11 pre-cost */
+	1, /* CH 0-11 full condition */
+	1, /* H2C full condition */
+	1, /* WP CH 0-7 full condition */
+	1 /* WP CH 8-11 full condition */
+};
+
 static inline struct rtw89_hfc_param *hfc_get_param(void)
 {
 	return &hfc_param;
@@ -220,21 +278,41 @@ static struct rtw89_hfc_param_ini rtw8852a_hfc_param_ini_pcie[] = {
 	{0},
 };
 
+static struct rtw89_hfc_param_ini rtw8852a_hfc_param_ini_usb[] = {
+	{RTW89_QTA_SCC, hfc_chcfg_usb_8852a_scc,
+	 &hfc_pubcfg_usb_8852a_scc, &hfc_preccfg_usb,
+	 RTW89_HCIFC_STF},
+	{RTW89_QTA_DBCC, hfc_chcfg_usb_8852a_dbcc,
+	 &hfc_pubcfg_usb_8852a_dbcc, &hfc_preccfg_usb,
+	 RTW89_HCIFC_STF},
+	{0},
+};
+
 static int hfc_reset_param(struct rtw89_dev *rtwdev)
 {
 	struct rtw89_hfc_param *param = hfc_get_param();
 	struct rtw89_hfc_param_ini param_ini = {0};
 
-//	switch (rtwdev->chip->intf) {
-//	case RTW89_INTF_PCIE:
+	switch (rtwdev->hci.type) {
+	case RTW89_HCI_TYPE_PCIE:
 		param_ini = rtw8852a_hfc_param_ini_pcie[rtwdev->mac.dle_info.qta_mode];
 		param->en = 0;
 		if (param_ini.qta_mode != rtwdev->mac.dle_info.qta_mode)
 			return -EINVAL;
-//		break;
-//	default:
-//		return -EINVAL;
-//	}
+		break;
+	case RTW89_HCI_TYPE_USB:
+		rtw89_info(rtwdev, "hfc param init usb, qta_mode:%d\n",
+			   rtwdev->mac.dle_info.qta_mode);
+		param_ini = rtw8852a_hfc_param_ini_usb[rtwdev->mac.dle_info.qta_mode];
+		param->en = 0;
+		if (param_ini.qta_mode != rtwdev->mac.dle_info.qta_mode) {
+			rtw89_err(rtwdev, "failed qta_mode mismatch\n");
+			return -EINVAL;
+		}
+		break;
+	default:
+		return -EINVAL;
+	}
 
 	if (param_ini.pub_cfg)
 		param->pub_cfg = param_ini.pub_cfg;
