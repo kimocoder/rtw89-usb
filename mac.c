@@ -1022,6 +1022,13 @@ static struct rtw89_dle_size ple_size0 = {
 	0,
 };
 
+/* SDIO, USB */
+static struct rtw89_dle_size ple_size1 = {
+	RTW89_PLE_PG_128, /* pge_size */
+	3200, /* lnk_pge_num */
+	0, /* unlink_pge_num */
+};
+
 /* PCIE STF */
 static struct rtw89_dle_size ple_size2 = {
 	RTW89_PLE_PG_128,
@@ -1286,6 +1293,36 @@ static struct rtw89_ple_quota ple_qt15 = {
 	80,
 };
 
+/* USB DBCC */
+static struct rtw89_ple_quota ple_qt16 = {
+	2048, /* cmac0_tx */
+	0, /* cmac1_tx */
+	16, /* c2h */
+	48, /* h2c */
+	26, /* wcpu */
+	26, /* mpdu_proc */
+	360, /* cmac0_dma */
+	90, /* cma1_dma */
+	32, /* bb_rpt */
+	40, /* wd_rel */
+	1, /* cpu_io */
+};
+
+/* USB DBCC */
+static struct rtw89_ple_quota ple_qt17 = {
+	2048, /* cmac0_tx */
+	0, /* cmac1_tx */
+	529, /* c2h */
+	48, /* h2c */
+	64, /* wcpu */
+	539, /* mpdu_proc */
+	873, /* cmac0_dma */
+	603, /* cma1_dma */
+	64, /* bb_rpt */
+	128, /* wd_rel */
+	1, /* cpu_io */
+};
+
 /* LA-PCIE MIN*/
 static struct rtw89_ple_quota ple_qt23 = {
 	156,
@@ -1314,6 +1351,36 @@ static struct rtw89_ple_quota ple_qt24 = {
 	64,
 	128,
 	1,
+};
+
+/* USB SCC */
+static struct rtw89_ple_quota ple_qt25 = {
+	1536, /* cmac0_tx */
+	0, /* cmac1_tx */
+	16, /* c2h */
+	48, /* h2c */
+	13, /* wcpu */
+	26, /* mpdu_proc */
+	360, /* cmac0_dma */
+	0, /* cma1_dma */
+	32, /* bb_rpt */
+	40, /* wd_rel */
+	1, /* cpu_io */
+};
+
+/* USB SCC */
+static struct rtw89_ple_quota ple_qt26 = {
+	1536, /* cmac0_tx */
+	0, /* cmac1_tx */
+	1144, /* c2h */
+	48, /* h2c */
+	64, /* wcpu */
+	1154, /* mpdu_proc */
+	1488, /* cmac0_dma */
+	0, /* cma1_dma */
+	64, /* bb_rpt */
+	128, /* wd_rel */
+	1, /* cpu_io */
 };
 
 static struct rtw89_dle_mem rtw8852a_dle_mem_pcie[] = {
@@ -1360,15 +1427,39 @@ static struct rtw89_dle_mem rtw8852a_dle_mem_pcie[] = {
 	{RTW89_QTA_INVALID, NULL, NULL, NULL, NULL, NULL, NULL},
 };
 
+static struct rtw89_dle_mem rtw8852a_dle_mem_usb[] = {
+	{RTW89_QTA_SCC, /* qta_mode */
+	 &wde_size1, &ple_size1, /* wde_size, ple_size */
+	 &wde_qt1, &wde_qt1, /* wde_min_qt, wde_max_qt */
+	 &ple_qt25, &ple_qt26}, /* ple_min_qt, ple_max_qt */
+	{RTW89_QTA_DBCC, /* qta_mode */
+	 &wde_size1, &ple_size1, /* wde_size, ple_size */
+	 &wde_qt1, &wde_qt1, /* wde_min_qt, wde_max_qt */
+	 &ple_qt16, &ple_qt17}, /* ple_min_qt, ple_max_qt */
+	{RTW89_QTA_DLFW, /* qta_mode */
+	 &wde_size4, &ple_size4, /* wde_size, ple_size */
+	 &wde_qt4, &wde_qt4, /* wde_min_qt, wde_max_qt */
+	 &ple_qt13, &ple_qt13}, /* ple_min_qt, ple_max_qt */
+	{RTW89_QTA_INVALID, NULL, NULL, NULL, NULL, NULL, NULL},
+};
+
 static struct rtw89_dle_mem *get_dle_mem_cfg(struct rtw89_dev *rtwdev,
 					     enum rtw89_qta_mode mode)
 {
 	struct rtw89_mac_info *mac = &rtwdev->mac;
-	struct rtw89_dle_mem *cfg;
+	struct rtw89_dle_mem *cfg = NULL;
 
-	cfg = &rtw8852a_dle_mem_pcie[mode];
-	if (!cfg)
+	if (rtwdev->hci.type == RTW89_HCI_TYPE_PCIE)
+		cfg = &rtw8852a_dle_mem_pcie[mode];
+	else if (rtwdev->hci.type == RTW89_HCI_TYPE_USB) {
+		rtw89_info(rtwdev, "get_dle_mem_cfg: rtw8852a_dle_mem_usb\n");
+		cfg = &rtw8852a_dle_mem_usb[mode];
+	}
+
+	if (!cfg) {
+		rtw89_err(rtwdev, "failed to get dle mem cfg\n");
 		return NULL;
+	}
 
 	if (cfg->mode != mode) {
 		rtw89_warn(rtwdev, "qta mode unmatch!\n");
@@ -1676,36 +1767,42 @@ static int dmac_init(struct rtw89_dev *rtwdev, u8 band)
 {
 	int ret;
 
+	pr_info("%s: dle_init\n", __func__);
 	ret = dle_init(rtwdev, rtwdev->mac.dle_info.qta_mode);
 	if (ret) {
 		rtw89_err(rtwdev, "[ERR]DLE init %d\n", ret);
 		return ret;
 	}
 
+	pr_info("%s: hfc_init\n", __func__);
 	ret = hfc_init(rtwdev, true, true, true);
 	if (ret) {
 		rtw89_err(rtwdev, "[ERR]HCI FC init %d\n", ret);
 		return ret;
 	}
 
+	pr_info("%s: sta_sch_init\n", __func__);
 	ret = sta_sch_init(rtwdev);
 	if (ret) {
 		rtw89_err(rtwdev, "[ERR]STA SCH init %d\n", ret);
 		return ret;
 	}
 
+	pr_info("%s: mpdu_proc_init\n", __func__);
 	ret = mpdu_proc_init(rtwdev);
 	if (ret) {
 		rtw89_err(rtwdev, "[ERR]MPDU Proc init %d\n", ret);
 		return ret;
 	}
 
+	pr_info("%s: sec_eng_init\n", __func__);
 	ret = sec_eng_init(rtwdev);
 	if (ret) {
 		rtw89_err(rtwdev, "[ERR]Security Engine init %d\n", ret);
 		return ret;
 	}
 
+	pr_info("%s: <===\n", __func__);
 	return ret;
 }
 
@@ -2367,12 +2464,14 @@ static int rtw89_mac_trx_init(struct rtw89_dev *rtwdev)
 	enum rtw89_qta_mode qta_mode = rtwdev->mac.dle_info.qta_mode;
 	int ret;
 
+	pr_info("%s: dmac_init\n", __func__);
 	ret = dmac_init(rtwdev, 0);
 	if (ret) {
 		rtw89_err(rtwdev, "[ERR]DMAC init %d\n", ret);
 		return ret;
 	}
 
+	pr_info("%s: cmac_init\n", __func__);
 	ret = cmac_init(rtwdev, 0);
 	if (ret) {
 		rtw89_err(rtwdev, "[ERR]CMAC%d init %d\n", 0, ret);
@@ -2382,6 +2481,7 @@ static int rtw89_mac_trx_init(struct rtw89_dev *rtwdev)
 	if (qta_mode == RTW89_QTA_DBCC || qta_mode == RTW89_QTA_DBCC_WD128 ||
 	    qta_mode == RTW89_QTA_DBCC_STF || qta_mode == RTW89_QTA_SU_TP ||
 	    qta_mode == RTW89_QTA_BCN_TEST) {
+		pr_info("%s: rtw89_mac_dbcc_enable\n", __func__);
 		ret = rtw89_mac_dbcc_enable(rtwdev, true);
 		if (ret) {
 			rtw89_err(rtwdev, "[ERR]dbcc_enable init %d\n", ret);
@@ -2389,12 +2489,14 @@ static int rtw89_mac_trx_init(struct rtw89_dev *rtwdev)
 		}
 	}
 
+	pr_info("%s: rtw89_mac_enable_imr: DMAC\n", __func__);
 	ret = rtw89_mac_enable_imr(rtwdev, 0, RTW89_DMAC_SEL);
 	if (ret) {
 		rtw89_err(rtwdev, "[ERR] enable DMAC IMR %d\n", ret);
 		return ret;
 	}
 
+	pr_info("%s: rtw89_mac_enable_imr: CMAC\n", __func__);
 	ret = rtw89_mac_enable_imr(rtwdev, 0, RTW89_CMAC_SEL);
 	if (ret) {
 		rtw89_err(rtwdev, "[ERR] to enable CMAC0 IMR %d\n", ret);
@@ -2410,6 +2512,7 @@ static int rtw89_mac_trx_init(struct rtw89_dev *rtwdev)
 		rtw89_write32(rtwdev, R_AX_RLSRPT0_CFG1, val);
 	}
 
+	pr_info("%s <===\n", __func__);
 	return 0;
 }
 
