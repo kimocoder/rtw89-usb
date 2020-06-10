@@ -20,12 +20,13 @@
 #define RTW_USB_TX_SEL_NQ		BIT(2)
 #define RTW_USB_TX_SEL_EQ		BIT(3)
 
-#define RTW_USB_BULK_IN_ADDR		0x80
-#define RTW_USB_INT_IN_ADDR		0x81
+#define RTW_USB_BULK_IN_EP_IDX		0
+#define RTW_USB_IN_INT_EP_IDX		1
 
 #define RTW_USB_MAX_EP_OUT_NUM		8
-
 #define RTW_USB_HW_QUEUE_ENTRY		8
+#define RTW_USB_MAX_BULKIN_NUM		2
+#define RTW_USB_MAX_BULKOUT_NUM		7
 
 #define RTW_USB_PACKET_OFFSET_SZ	8
 #define RTW_USB_MAX_RECVBUF_SZ		32768
@@ -106,15 +107,14 @@ struct rtw_usb {
 		u8 val8;
 	} usb_buf;
 
-	u32 bulkout_size;
 	u8 num_in_pipes;
 	u8 num_out_pipes;
-	u8 pipe_interrupt;
-	u8 pipe_in;
-	u8 out_ep[RTW_USB_MAX_EP_OUT_NUM];
-	u8 out_ep_queue_sel;
-	u8 queue_to_pipe[8];
-	u8  usb_speed;
+	u8 in_pipe_type[RTW_USB_MAX_BULKIN_NUM];
+	u8 in_pipe[RTW_USB_MAX_BULKIN_NUM];
+	u8 out_pipe[RTW_USB_MAX_BULKOUT_NUM];
+
+	u32 bulkout_size;
+	u8 usb_speed;
 	u8 usb_txagg_num;
 
 	struct workqueue_struct *txwq, *rxwq;

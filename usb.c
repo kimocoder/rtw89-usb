@@ -129,20 +129,17 @@ static void rtw_usb_write32(struct rtw89_dev *rtwdev, u32 addr, u32 val)
 static int rtw_usb_parse(struct rtw89_dev *rtwdev,
 			 struct usb_interface *interface)
 {
-	struct rtw_usb *rtwusb;
+	struct rtw_usb *rtwusb = rtw_get_usb_priv(rtwdev);
 	struct usb_interface_descriptor *interface_desc;
 	struct usb_host_interface *host_interface;
 	struct usb_endpoint_descriptor *endpoint;
 	struct device *dev;
 	struct usb_device *usbd;
-	int i, j = 0, endpoints;
+	int i, endpoints;
 	u8 dir, xtype, num;
 	int ret = 0;
 
-	rtwusb = rtw_get_usb_priv(rtwdev);
-
 	dev = &rtwusb->udev->dev;
-
 	usbd = interface_to_usbdev(interface);
 	host_interface = &interface->altsetting[0];
 	interface_desc = &host_interface->desc;
@@ -155,9 +152,7 @@ static int rtw_usb_parse(struct rtw89_dev *rtwdev,
 		dir = endpoint->bEndpointAddress & USB_ENDPOINT_DIR_MASK;
 		num = usb_endpoint_num(endpoint);
 		xtype = usb_endpoint_type(endpoint);
-		//dev_dbg(dev,
-		//		"%s: endpoint: dir %02x, # %02x, type %02x\n",
-		//		__func__, dir, num, xtype);
+
 		pr_info("\nusb endpoint descriptor (%i):\n", i);
 		pr_info("bLength=%x\n", endpoint->bLength);
 		pr_info("bDescriptorType=%x\n", endpoint->bDescriptorType);
@@ -168,48 +163,52 @@ static int rtw_usb_parse(struct rtw89_dev *rtwdev,
 
 		if (usb_endpoint_dir_in(endpoint) &&
 		    usb_endpoint_xfer_bulk(endpoint)) {
-			dev_dbg(dev, "%s: in endpoint num %i\n", __func__, num);
-
-			if (rtwusb->pipe_in) {
-				dev_warn(dev, "%s: Too many IN pipes\n",
-					 __func__);
+			if (rtwusb->num_in_pipes >=
+			    ARRAY_SIZE(rtwusb->in_pipe_type)) {
+				rtw89_err(rtwdev, "%s: Too many IN pipes\n",
+					  __func__);
 				ret = -EINVAL;
 				goto exit;
 			}
 
-			rtwusb->pipe_in = num;
+			rtwusb->in_pipe_type[rtwusb->num_in_pipes] =
+				RTW_USB_BULK_IN_EP_IDX;
+			rtwusb->in_pipe[rtwusb->num_in_pipes] =
+				endpoint->bEndpointAddress &
+				USB_ENDPOINT_NUMBER_MASK;
 			rtwusb->num_in_pipes++;
 		}
 
 		if (usb_endpoint_dir_in(endpoint) &&
 		    usb_endpoint_xfer_int(endpoint)) {
-			dev_dbg(dev, "%s: interrupt endpoint num %i\n",
-				__func__, num);
-
-			if (rtwusb->pipe_interrupt) {
-				dev_warn(dev, "%s: Too many INTERRUPT pipes\n",
-					 __func__);
+			if (rtwusb->num_in_pipes >=
+			    ARRAY_SIZE(rtwusb->in_pipe_type)) {
+				rtw89_err(rtwdev, "%s: Too many INT pipes\n",
+					  __func__);
 				ret = -EINVAL;
 				goto exit;
 			}
 
-			rtwusb->pipe_interrupt = num;
+			rtwusb->in_pipe_type[rtwusb->num_in_pipes] =
+				RTW_USB_IN_INT_EP_IDX;
+			rtwusb->in_pipe[rtwusb->num_in_pipes] =
+				endpoint->bEndpointAddress &
+				USB_ENDPOINT_NUMBER_MASK;
+			rtwusb->num_in_pipes++;
 		}
 
 		if (usb_endpoint_dir_out(endpoint) &&
 		    usb_endpoint_xfer_bulk(endpoint)) {
-			dev_dbg(dev, "%s: out endpoint num %i\n",
-				__func__, num);
-			if (j >= RTW_USB_MAX_EP_OUT_NUM ) {
-				dev_warn(dev,
-					 "%s: Too many OUT pipes\n", __func__);
+			if (rtwusb->num_out_pipes >=
+			    ARRAY_SIZE(rtwusb->out_pipe)) {
+				rtw89_err(rtwdev, "%s: Too many OUT pipes\n",
+					  __func__);
 				ret = -EINVAL;
 				goto exit;
 			}
-
-			/* for out enpoint, address == number */
-			rtwusb->out_ep[j++] = num;
-			rtwusb->num_out_pipes++;
+			rtwusb->out_pipe[rtwusb->num_out_pipes++] =
+				endpoint->bEndpointAddress &
+				USB_ENDPOINT_NUMBER_MASK;
 		}
 	}
 
@@ -237,6 +236,70 @@ static int rtw_usb_parse(struct rtw89_dev *rtwdev,
 
 exit:
 	return ret;
+}
+
+/*
+ * DMA channel
+ */
+
+static unsigned int rtw_usb_bulkid_to_pipe(struct rtw89_dev *rtwdev, u32 addr,
+					   bool is_write)
+{
+	struct rtw_usb *rtwusb = rtw_get_usb_priv(rtwdev);
+	struct usb_device *usbd = rtwusb->udev;
+	int pipe = 0, ep_num = 0;
+
+	if (!is_write) {
+		if (unlikely(addr >= ARRAY_SIZE(rtwusb->in_pipe_type))) {
+			rtw89_err(rtwdev, "%s: IN addr error: %d\n", __func__,
+				  addr);
+			return pipe;
+		}
+		if (rtwusb->in_pipe_type[addr] == RTW_USB_BULK_IN_EP_IDX)
+			pipe = usb_rcvbulkpipe(usbd, rtwusb->in_pipe[addr]);
+		else if (rtwusb->in_pipe_type[addr] == RTW_USB_IN_INT_EP_IDX)
+			pipe = usb_rcvintpipe(usbd, rtwusb->in_pipe[addr]);
+	} else if (addr < RTW_USB_MAX_BULKOUT_NUM) {
+		ep_num = rtwusb->out_pipe[addr];
+		pipe = usb_sndbulkpipe(usbd, ep_num);
+	}
+
+	return pipe;
+}
+
+static u8 rtw_usb_get_bulkout_id(struct rtw89_dev *rtwdev, enum rtw89_dma_ch ch)
+{
+	u8 bulkout_id = 0;
+
+	switch(ch) {
+	case RTW89_DMA_ACH0:
+		bulkout_id = 3;
+		break;
+	case RTW89_DMA_ACH2:
+		bulkout_id = 5;
+		break;
+	case RTW89_DMA_ACH4:
+		bulkout_id = 4;
+		break;
+	case RTW89_DMA_ACH6:
+		bulkout_id = 6;
+		break;
+	case RTW89_DMA_B0MG:
+	case RTW89_DMA_B0HI:
+		bulkout_id = 0;
+		break;
+	case RTW89_DMA_B1MG:
+	case RTW89_DMA_B1HI:
+		bulkout_id = 1;
+		break;
+	case RTW89_DMA_H2C:
+		bulkout_id = 2;
+		break;
+	default:
+		rtw89_err(rtwdev, "failed to do channel mapping\n");
+	}
+
+	return bulkout_id;
 }
 
 static void rtw_usb_interface_configure(struct rtw89_dev *rtwdev)
@@ -664,6 +727,8 @@ static void rtw_usb_rx_handler(struct work_struct *work)
 
 static void rtw_usb_read_port_complete(struct urb *urb)
 {
+	pr_info("TODO: %s \n", __func__);
+#if 0
 	struct rx_usb_ctrl_block *rxcb = urb->context;
 	struct rtw89_dev *rtwdev = (struct rtw89_dev *)rxcb->data;
 	struct rtw_usb *rtwusb = (struct rtw_usb *)rtwdev->priv;
@@ -707,6 +772,7 @@ static void rtw_usb_read_port_complete(struct urb *urb)
 		if (skb)
 			dev_kfree_skb(skb);
 	}
+#endif
 }
 
 static void rtw_usb_read_port(struct rtw89_dev *rtwdev, u8 addr,
@@ -774,7 +840,7 @@ static void rtw_usb_inirp_init(struct rtw89_dev *rtwdev)
 			pr_err("%s: usb_alloc_urb failed\n", __func__);
 			goto err_exit;
 		}
-		rtw_usb_read_port(rtwdev, RTW_USB_BULK_IN_ADDR, rxcb);
+		//rtw_usb_read_port(rtwdev, RTW_USB_BULK_IN_ADDR, rxcb);
 	}
 
 	return;
