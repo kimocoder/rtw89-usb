@@ -21,6 +21,7 @@ int rtw89_fw_check_rdy(struct rtw89_dev *rtwdev)
 		udelay(1);
 	}
 
+	pr_info("%s: cnt=%u, val=%u\n", __func__, cnt, val);
 	if (!cnt) {
 		switch (val) {
 		case RTW89_FWDL_CHECKSUM_FAIL:
@@ -248,7 +249,7 @@ static u32 rtw89_fw_sections_download(struct rtw89_dev *rtwdev,
 	u32 residue_len = info->len;
 	u32 pkt_len;
 	u8 *buf;
-	u32 ret = 0;
+	u32 ret;
 
 	while (residue_len) {
 		if (residue_len >= FWDL_SECTION_PER_PKT_LEN)
@@ -265,6 +266,8 @@ static u32 rtw89_fw_sections_download(struct rtw89_dev *rtwdev,
 		section += pkt_len;
 		residue_len -= pkt_len;
 	}
+
+	return 0;
 }
 
 static int rtw89_fwdl_phase2(struct rtw89_dev *rtwdev)
@@ -289,6 +292,7 @@ static int rtw89_fwdl_phase2(struct rtw89_dev *rtwdev)
 
 	mdelay(5);
 	ret = rtw89_fw_check_rdy(rtwdev);
+	pr_info("FW check rdy: ret=%d\n", ret);
 	return ret;
 }
 

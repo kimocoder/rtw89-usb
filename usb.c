@@ -352,7 +352,6 @@ static void rtw_usb_write_port_complete(struct urb *urb)
 {
 	struct sk_buff *skb;
 
-	pr_info("%s: status=%d\n", __func__, urb->status);
 	if (!urb->status) { /* success */
 	} else {
 		pr_err("failed to USB write port\n");
@@ -641,10 +640,8 @@ static int rtw_usb_write_data_h2c(struct rtw89_dev *rtwdev, struct sk_buff *skb)
 {
 	int ret;
 
-	pr_info("TODO: %s, len:%d\n", __func__, skb->len);
-	print_hex_dump(KERN_INFO, "usb write h2c: ", DUMP_PREFIX_OFFSET, 16, 1,
-		       skb->data, skb->len, 1);
-
+	//print_hex_dump(KERN_INFO, "usb write h2c: ", DUMP_PREFIX_OFFSET, 16, 1,
+	//	       skb->data, skb->len, 1);
 	ret = rtw_usb_write_port(rtwdev, RTW89_DMA_H2C, skb);
 	if (unlikely(ret))
 		rtw89_err(rtwdev, "failed to do USB write async, ret=%d\n",
