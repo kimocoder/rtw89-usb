@@ -207,6 +207,8 @@ struct rtw89_hci_ops {
 
 	int (*mac_pre_init)(struct rtw89_dev *rtwdev);
 	int (*mac_post_init)(struct rtw89_dev *rtwdev);
+
+	int (*write_data_h2c)(struct rtw89_dev *rtwdev, struct sk_buff *skb);
 };
 
 struct rtw89_hci_info {
@@ -383,6 +385,12 @@ static inline int rtw89_hci_start(struct rtw89_dev *rtwdev)
 static inline void rtw89_hci_stop(struct rtw89_dev *rtwdev)
 {
 	rtwdev->hci.ops->stop(rtwdev);
+}
+
+static inline int rtw89_hci_write_data_h2c(struct rtw89_dev *rtwdev,
+					   struct sk_buff *skb)
+{
+	return rtwdev->hci.ops->write_data_h2c(rtwdev, skb);
 }
 
 static inline u8 rtw89_read8(struct rtw89_dev *rtwdev, u32 addr)

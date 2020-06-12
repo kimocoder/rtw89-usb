@@ -633,11 +633,14 @@ static int rtw_usb_write_data_rsvd_page(struct rtw89_dev *rtwdev, u8 *buf,
 #endif
 }
 
-static int rtw_usb_write_data_h2c(struct rtw89_dev *rtwdev, u8 *buf, u32 size)
+static int rtw_usb_write_data_h2c(struct rtw89_dev *rtwdev, struct sk_buff *skb)
 {
 	int ret = -EINVAL;
 
-	pr_info("%s ==>\n", __func__);
+	pr_info("TODO: %s, len:%d\n", __func__, skb->len);
+	print_hex_dump(KERN_INFO, "usb write h2c: ", DUMP_PREFIX_OFFSET, 16, 1,
+		       skb->data, skb->len, 1);
+
 	return ret;
 #if 0
 	return rtw_usb_write_data(rtwdev, buf, size, TX_DESC_QSEL_H2C);
@@ -922,8 +925,6 @@ static int rtw89_usb_ops_mac_post_init(struct rtw89_dev *rtwdev)
 	return 0;
 }
 
-
-
 static struct rtw89_hci_ops rtw89_usb_ops = {
 	.tx = rtw89_usb_ops_tx,
 	.reset = rtw89_usb_ops_reset,
@@ -937,9 +938,10 @@ static struct rtw89_hci_ops rtw89_usb_ops = {
 
 	.mac_pre_init = rtw89_usb_ops_mac_pre_init,
 	.mac_post_init = rtw89_usb_ops_mac_post_init,
+
+	.write_data_h2c = rtw_usb_write_data_h2c,
 #if 0
 	.write_data_rsvd_page = rtw_usb_write_data_rsvd_page,
-	.write_data_h2c = rtw_usb_write_data_h2c,
 #endif
 };
 

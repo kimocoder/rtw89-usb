@@ -5,6 +5,10 @@
 #ifndef __RTW89_TXRX_H__
 #define __RTW89_TXRX_H__
 
+#define RTW89_TX_WD_BODY_LEN	24
+#define RTW89_TX_WD_INFO_LEN	24
+
+
 /* TX WD BODY DWORD 0 */
 #define RTW89_TXWD_WP_OFFSET		GENMASK(31, 24)
 #define RTW89_TXWD_MORE_DATA		BIT(23)

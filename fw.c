@@ -4,6 +4,7 @@
 #include "core.h"
 #include "debug.h"
 #include "reg.h"
+#include "txrx.h"
 #include "fw.h"
 
 #define FWDL_WAIT_CNT 400000
@@ -106,6 +107,51 @@ static void rtw89_fw_update_ver(struct rtw89_dev *rtwdev,
 	fw_info->rec_seq = 0;
 }
 
+static int rtw89_fw_send_h2c_mac(struct rtw89_dev *rtwdev, u8 *h2c_pkt, u32 len,
+				 u8 cl, u8 func)
+{
+	struct rtw89_fw_info *fw_info = &rtwdev->fw;
+	struct rtw89_fw_cmd_hdr *fchdr;
+	struct sk_buff *skb;
+	int headsize = RTW89_FWCMD_HDR_LEN + RTW89_TX_WD_BODY_LEN;
+	int ret = 0;
+
+	pr_info("TODO: %s\n", __func__);
+
+	skb = dev_alloc_skb(len + headsize);
+	if (unlikely(!skb))
+		return -ENOMEM;
+
+	skb_reserve(skb, headsize);
+	skb_put_data(skb, h2c_pkt, len);
+
+	/* FWCMD HDR */
+	skb_push(skb, RTW89_FWCMD_HDR_LEN);
+	memset(skb->data, 0, RTW89_FWCMD_HDR_LEN);
+	fchdr = (struct rtw89_fw_cmd_hdr *)skb->data;
+	fchdr->del_type = RTW89_FWCMD_TYPE_H2C;
+	fchdr->cat = RTW89_FWCMD_H2C_CAT_MAC;
+	fchdr->cl = cl;
+	fchdr->func = func;
+	fchdr->h2c_seq = fw_info->h2c_seq;
+	fchdr->len = len + RTW89_FWCMD_HDR_LEN;
+
+	/* TXDESC */
+	skb_push(skb, RTW89_TX_WD_BODY_LEN);
+	memset(skb->data, 0, RTW89_TX_WD_BODY_LEN);
+
+	ret = rtw89_hci_write_data_h2c(rtwdev, skb);
+	if (unlikely(ret))
+		goto err_free_skb;
+
+	return ret;
+
+err_free_skb:
+	dev_kfree_skb(skb);
+
+	return ret;
+}
+
 static int rtw89_fw_poll_ready(struct rtw89_dev *rtwdev, u8 rbit)
 {
 	u32 cnt = FWDL_WAIT_CNT;
@@ -126,11 +172,27 @@ static int rtw89_fw_poll_ready(struct rtw89_dev *rtwdev, u8 rbit)
 
 int rtw89_fw_download(struct rtw89_dev *rtwdev)
 {
+	struct rtw89_fw_info *fw_info = &rtwdev->fw;
+	const struct firmware *firmware = fw_info->firmware;
+	struct rtw89_fw_bin_info *bin_info = fw_info->bin_info;
+	u8 *buf;
 	int ret;
+	int len;
 
 	// fwdl_phase0
 	ret = rtw89_fw_poll_ready(rtwdev, B_AX_H2C_PATH_RDY);
 	pr_info("fwdl_phase0 success\n");
+
+	// fwdl_phase1
+	buf = firmware->data;
+	len = bin_info->hdr_len;
+	ret = rtw89_fw_send_h2c_mac(rtwdev, buf, len,
+				    RTW89_FWCMD_H2C_CL_FWDL,
+				    RTW89_FWCMD_H2C_FUNC_FWHDR_DL);
+	if (unlikely(ret))
+		goto fwdl_err;
+
+	ret = -EINVAL;
 
 fwdl_err:
 	return ret;

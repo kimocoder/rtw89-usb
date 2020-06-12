@@ -87,6 +87,55 @@ struct rtw89_fw_hdr {
 	u8 cmd_ver;
 } __packed;
 
+/* FWCMD */
+#define RTW89_FWCMD_HDR_LEN 8
+
+/* FWCMD del_type */
+#define RTW89_FWCMD_TYPE_H2C	0
+#define RTW89_FWCMD_TYPE_C2H	1
+
+/* FWCMD cat */
+#define RTW89_FWCMD_H2C_CAT_TEST 0x0
+#define RTW89_FWCMD_H2C_CAT_MAC 0x1
+#define RTW89_FWCMD_H2C_CAT_OUTSRC 0x2
+
+/* FWCMD cl */
+#define RTW89_FWCMD_H2C_CL_FW_INFO 0x0
+#define RTW89_FWCMD_H2C_CL_WOW 0x1
+#define RTW89_FWCMD_H2C_CL_PS 0x2
+#define RTW89_FWCMD_H2C_CL_FWDL 0x3
+#define RTW89_FWCMD_H2C_CL_TWT 0x4
+#define RTW89_FWCMD_H2C_CL_FR_EXCHG 0x5
+#define RTW89_FWCMD_H2C_CL_ADDR_CAM_UPDATE 0x6
+#define RTW89_FWCMD_H2C_CL_BSSID_CAM_UPDATE 0x7
+#define RTW89_FWCMD_H2C_CL_MEDIA_RPT 0x8
+#define RTW89_FWCMD_H2C_CL_FW_OFLD 0x9
+#define RTW89_FWCMD_H2C_CL_SEC_CAM 0xA
+#define RTW89_FWCMD_H2C_CL_SOUND 0xB
+#define RTW89_FWCMD_H2C_CL_BA_CAM 0xC
+#define RTW89_FWCMD_H2C_CL_IE_CAM 0xD
+
+/* FWCMD class 3 fwdl */
+#define RTW89_FWCMD_H2C_FUNC_FWHDR_DL 0x0
+#define RTW89_FWCMD_H2C_FUNC_FWHDR_REDL 0x1
+
+struct rtw89_fw_cmd_hdr {
+	/* dword0 */
+	u8 cat:2;
+	u8 cl:6;
+	u8 func;
+	u8 del_type;
+	u8 h2c_seq;
+	/* dword1 */
+	u16 len:14;
+	u8 rec_ack:1;
+	u8 done_ack:1;
+	u8 seq_valid:1;
+	u8 seq:3;
+	u8 seq_stop:1;
+	u16 res1:12;
+} __packed;
+
 int rtw89_fw_check_rdy(struct rtw89_dev *rtwdev);
 int rtw89_fw_request(struct rtw89_dev *rtwdev);
 int rtw89_fw_wait_completion(struct rtw89_dev *rtwdev);
