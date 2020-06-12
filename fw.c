@@ -111,7 +111,8 @@ static int rtw89_fw_send_h2c_mac(struct rtw89_dev *rtwdev, u8 *h2c_pkt, u32 len,
 				 u8 cl, u8 func)
 {
 	struct rtw89_fw_info *fw_info = &rtwdev->fw;
-	struct rtw89_fw_cmd_hdr *fchdr;
+	struct rtw89_fw_cmd_hdr *fc_hdr;
+	struct rtw89_txdesc_wd_body *wd_body;
 	struct sk_buff *skb;
 	int headsize = RTW89_FWCMD_HDR_LEN + RTW89_TX_WD_BODY_LEN;
 	int ret = 0;
@@ -128,17 +129,20 @@ static int rtw89_fw_send_h2c_mac(struct rtw89_dev *rtwdev, u8 *h2c_pkt, u32 len,
 	/* FWCMD HDR */
 	skb_push(skb, RTW89_FWCMD_HDR_LEN);
 	memset(skb->data, 0, RTW89_FWCMD_HDR_LEN);
-	fchdr = (struct rtw89_fw_cmd_hdr *)skb->data;
-	fchdr->del_type = RTW89_FWCMD_TYPE_H2C;
-	fchdr->cat = RTW89_FWCMD_H2C_CAT_MAC;
-	fchdr->cl = cl;
-	fchdr->func = func;
-	fchdr->h2c_seq = fw_info->h2c_seq;
-	fchdr->len = len + RTW89_FWCMD_HDR_LEN;
+	fc_hdr = (struct rtw89_fw_cmd_hdr *)skb->data;
+	fc_hdr->del_type = RTW89_FWCMD_TYPE_H2C;
+	fc_hdr->cat = RTW89_FWCMD_H2C_CAT_MAC;
+	fc_hdr->cl = cl;
+	fc_hdr->func = func;
+	fc_hdr->h2c_seq = fw_info->h2c_seq;
+	fc_hdr->len = len + RTW89_FWCMD_HDR_LEN;
 
 	/* TXDESC */
 	skb_push(skb, RTW89_TX_WD_BODY_LEN);
 	memset(skb->data, 0, RTW89_TX_WD_BODY_LEN);
+	wd_body = (struct rtw89_txdesc_wd_body *)skb->data;
+	wd_body->ch_dma = RTW89_DMA_H2C;
+	wd_body->txpktsize = len + RTW89_FWCMD_HDR_LEN;
 
 	ret = rtw89_hci_write_data_h2c(rtwdev, skb);
 	if (unlikely(ret))
