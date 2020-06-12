@@ -156,6 +156,43 @@ err_free_skb:
 	return ret;
 }
 
+static int rtw89_fw_sec_send_h2c(struct rtw89_dev *rtwdev,
+				 u8 *h2c_pkt, u32 len)
+{
+	struct rtw89_fw_info *fw_info = &rtwdev->fw;
+	struct rtw89_fw_cmd_hdr *fc_hdr;
+	struct rtw89_txdesc_wd_body *wd_body;
+	struct sk_buff *skb;
+	int headsize = RTW89_TX_WD_BODY_LEN;
+	int ret = 0;
+
+	skb = dev_alloc_skb(len + headsize);
+	if (unlikely(!skb))
+		return -ENOMEM;
+
+	skb_reserve(skb, headsize);
+	skb_put_data(skb, h2c_pkt, len);
+
+	/* TXDESC */
+	skb_push(skb, RTW89_TX_WD_BODY_LEN);
+	memset(skb->data, 0, RTW89_TX_WD_BODY_LEN);
+	wd_body = (struct rtw89_txdesc_wd_body *)skb->data;
+	wd_body->ch_dma = RTW89_DMA_H2C;
+	wd_body->fwdl_en = 1;
+	wd_body->txpktsize = len;
+
+	ret = rtw89_hci_write_data_h2c(rtwdev, skb);
+	if (unlikely(ret))
+		goto err_free_skb;
+
+	return ret;
+
+err_free_skb:
+	dev_kfree_skb(skb);
+
+	return ret;
+}
+
 static int rtw89_fw_poll_ready(struct rtw89_dev *rtwdev, u8 rbit)
 {
 	u32 cnt = FWDL_WAIT_CNT;
@@ -174,27 +211,105 @@ static int rtw89_fw_poll_ready(struct rtw89_dev *rtwdev, u8 rbit)
 	return 0;
 }
 
-int rtw89_fw_download(struct rtw89_dev *rtwdev)
+static int rtw89_fwdl_phase0(struct rtw89_dev *rtwdev)
+{
+	int ret;
+
+	ret = rtw89_fw_poll_ready(rtwdev, B_AX_H2C_PATH_RDY);
+
+	return ret;
+}
+
+static int rtw89_fwdl_phase1(struct rtw89_dev *rtwdev)
 {
 	struct rtw89_fw_info *fw_info = &rtwdev->fw;
-	const struct firmware *firmware = fw_info->firmware;
 	struct rtw89_fw_bin_info *bin_info = fw_info->bin_info;
+	const struct firmware *firmware = fw_info->firmware;
 	u8 *buf;
-	int ret;
 	int len;
+	int ret;
 
-	// fwdl_phase0
-	ret = rtw89_fw_poll_ready(rtwdev, B_AX_H2C_PATH_RDY);
-	pr_info("fwdl_phase0 success\n");
-
-	// fwdl_phase1
 	buf = firmware->data;
 	len = bin_info->hdr_len;
 	ret = rtw89_fw_send_h2c_mac(rtwdev, buf, len,
 				    RTW89_FWCMD_H2C_CL_FWDL,
 				    RTW89_FWCMD_H2C_FUNC_FWHDR_DL);
 	if (unlikely(ret))
+		return ret;
+
+	ret = rtw89_fw_poll_ready(rtwdev, B_AX_H2C_PATH_RDY);
+	return ret;
+}
+
+static u32 rtw89_fw_sections_download(struct rtw89_dev *rtwdev,
+				      struct rtw89_fw_hdr_section_info *info)
+{
+	u8 *section = info->addr;
+	u32 residue_len = info->len;
+	u32 pkt_len;
+	u8 *buf;
+	u32 ret = 0;
+
+	while (residue_len) {
+		if (residue_len >= FWDL_SECTION_PER_PKT_LEN)
+			pkt_len = FWDL_SECTION_PER_PKT_LEN;
+		else
+			pkt_len = residue_len;
+
+		ret = rtw89_fw_sec_send_h2c(rtwdev, section, pkt_len);
+		if (unlikely(ret)) {
+			rtw89_err(rtwdev, "failed to send FW section h2c\n");
+			return ret;
+		}
+
+		section += pkt_len;
+		residue_len -= pkt_len;
+	}
+}
+
+static int rtw89_fwdl_phase2(struct rtw89_dev *rtwdev)
+{
+	struct rtw89_fw_info *fw_info = &rtwdev->fw;
+	struct rtw89_fw_bin_info *bin_info = fw_info->bin_info;
+	const struct firmware *firmware = fw_info->firmware;
+	struct rtw89_fw_hdr_section_info *section_info = bin_info->section_info;
+	u32 section_num = bin_info->section_num;
+	u8 *buf;
+	int len;
+	int ret;
+
+	while (section_num > 0) {
+		ret =  rtw89_fw_sections_download(rtwdev, section_info);
+		if (unlikely(ret))
+			return ret;
+
+		section_info++;
+		section_num--;
+	}
+
+	mdelay(5);
+	ret = rtw89_fw_check_rdy(rtwdev);
+	return ret;
+}
+
+int rtw89_fw_download(struct rtw89_dev *rtwdev)
+{
+	int ret;
+
+	ret = rtw89_fwdl_phase0(rtwdev);
+	if (unlikely(ret))
 		goto fwdl_err;
+	pr_info("fwdl_phase0 success\n");
+
+	ret = rtw89_fwdl_phase1(rtwdev);
+	if (unlikely(ret))
+		goto fwdl_err;
+	pr_info("fwdl_phase1 success\n");
+
+	ret = rtw89_fwdl_phase2(rtwdev);
+	if (unlikely(ret))
+		goto fwdl_err;
+	pr_info("fwdl_phase2 success\n");
 
 	ret = -EINVAL;
 
