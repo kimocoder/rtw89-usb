@@ -118,8 +118,6 @@ static int rtw89_fw_send_h2c_mac(struct rtw89_dev *rtwdev, u8 *h2c_pkt, u32 len,
 	int headsize = RTW89_FWCMD_HDR_LEN + RTW89_TX_WD_BODY_LEN;
 	int ret = 0;
 
-	pr_info("TODO: %s\n", __func__);
-
 	skb = dev_alloc_skb(len + headsize);
 	if (unlikely(!skb))
 		return -ENOMEM;
@@ -302,23 +300,15 @@ int rtw89_fw_download(struct rtw89_dev *rtwdev)
 
 	ret = rtw89_fwdl_phase0(rtwdev);
 	if (unlikely(ret))
-		goto fwdl_err;
-	pr_info("fwdl_phase0 success\n");
+		return ret;
 
 	ret = rtw89_fwdl_phase1(rtwdev);
 	if (unlikely(ret))
-		goto fwdl_err;
-	pr_info("fwdl_phase1 success\n");
+		return ret;
 
 	ret = rtw89_fwdl_phase2(rtwdev);
 	if (unlikely(ret))
-		goto fwdl_err;
-	pr_info("fwdl_phase2 success\n");
-
-	ret = -EINVAL;
-
-fwdl_err:
-	return ret;
+		return ret;
 }
 
 int rtw89_fw_wait_completion(struct rtw89_dev *rtwdev)

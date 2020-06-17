@@ -5,6 +5,7 @@
 #include "core.h"
 #include "debug.h"
 #include "mac.h"
+#include "efuse.h"
 
 static void rtw89_ops_tx(struct ieee80211_hw *hw,
 			 struct ieee80211_tx_control *control,

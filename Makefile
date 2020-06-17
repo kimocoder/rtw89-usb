@@ -10,7 +10,8 @@ rtw89_core-y += core.o \
 		mac.o \
 		fw.o \
 		debug.o \
-		rtw8852a.o
+		rtw8852a.o \
+		efuse.o
 
 obj-$(CONFIG_RTW89_PCI) += rtw89_pci.o
 obj-$(CONFIG_RTW89_USB) += rtw89_usb.o

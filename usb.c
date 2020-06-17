@@ -394,28 +394,28 @@ static int rtw_usb_write_port(struct rtw89_dev *rtwdev,
 	return ret;
 }
 
-static int rtw_usb_write_port_wait(struct rtw89_dev *rtwdev, u8 addr, u32 cnt,
+static int rtw_usb_write_port_wait(struct rtw89_dev *rtwdev,
+				   enum rtw89_dma_ch dma_ch,
 				   struct sk_buff *skb)
 {
-	int ret = -EINVAL;
-
-	return ret;
-#if 0
 	struct rtw_usb *rtwusb = rtw_get_usb_priv(rtwdev);
 	struct usb_device *usbd = rtwusb->udev;
+	struct urb *urb;
 	unsigned int pipe;
-	int ret;
+	bool is_write = true;
+	u8 bulkout_id;
 	int transfer;
+	int ret;
 
-	pipe = rtw_usb_get_pipe(rtwusb, addr);
+	bulkout_id = rtw_usb_get_bulkout_id(rtwdev, dma_ch);
+	pipe = rtw_usb_get_pipe(rtwdev, bulkout_id, is_write);
 
-	ret = usb_bulk_msg(usbd, pipe, (void *)skb->data, (int)cnt,
-			   &transfer, USB_MSG_TIMEOUT);
+	ret = usb_bulk_msg(usbd, pipe, (void *)skb->data, skb->len, &transfer,
+			   RTW_USB_MSG_TIMEOUT);
 	if (ret < 0)
-		rtw89_err(rtwdev, "failed to do USB bulk out, ret=%d\n", ret);
+		rtw89_err(rtwdev, "fail to do usb_bulk_msg, ret=%d\n", ret);
 
 	return ret;
-#endif
 }
 
 static void rtw_usb_tx_queue_init(struct rtw_usb *rtwusb)
@@ -642,7 +642,7 @@ static int rtw_usb_write_data_h2c(struct rtw89_dev *rtwdev, struct sk_buff *skb)
 
 	//print_hex_dump(KERN_INFO, "usb write h2c: ", DUMP_PREFIX_OFFSET, 16, 1,
 	//	       skb->data, skb->len, 1);
-	ret = rtw_usb_write_port(rtwdev, RTW89_DMA_H2C, skb);
+	ret = rtw_usb_write_port_wait(rtwdev, RTW89_DMA_H2C, skb);
 	if (unlikely(ret))
 		rtw89_err(rtwdev, "failed to do USB write async, ret=%d\n",
 			  ret);

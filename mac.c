@@ -8,6 +8,7 @@
 #include "reg.h"
 #include "fw.h"
 #include "pci.h"
+#include "efuse.h"
 
 int rtw89_mac_check_mac_en(struct rtw89_dev *rtwdev, u8 band,
 			   enum rtw89_mac_hwmod_sel sel)
@@ -2595,6 +2596,11 @@ int rtw89_mac_init(struct rtw89_dev *rtwdev)
 	ret = rtw89_fw_download(rtwdev);
 	if (ret)
 		return ret; 
+
+	pr_info("efuse process\n");
+	ret = rtw89_efuse_process(rtwdev);
+	if (ret)
+		return ret;
 
 	pr_info("%s: stop here first\n", __func__);
 	return -EINVAL;
