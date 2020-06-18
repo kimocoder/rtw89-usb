@@ -11,6 +11,29 @@
 #define R_AX_SYS_EEPROM_CTRL 0x000A
 #define B_AX_AUTOLOAD_SUS BIT(5)
 
+#define R_AX_EFUSE_CTRL 0x0030
+#define B_AX_EF_MODE_SEL_SH 30
+#define B_AX_EF_MODE_SEL_MSK 0x3
+#define B_AX_EF_RDY BIT(29)
+#define B_AX_EF_COMP_RESULT BIT(28)
+#define B_AX_EF_ADDR_SH 16
+#define B_AX_EF_ADDR_MSK 0x7ff
+#define B_AX_EF_DATA_SH 0
+#define B_AX_EF_DATA_MSK 0xffff
+
+#define R_AX_EFUSE_CTRL_1 0x0038
+#define B_AX_EF_PGPD_SH 28
+#define B_AX_EF_PGPD_MSK 0x7
+#define B_AX_EF_RDT BIT(27)
+#define B_AX_EF_VDDQST_SH 24
+#define B_AX_EF_VDDQST_MSK 0xf
+#define B_AX_EF_PGTS_SH 20
+#define B_AX_EF_PGTS_MSK 0xf
+#define B_AX_EF_PD_DIS BIT(11)
+#define B_AX_EF_POR BIT(10)
+#define B_AX_EF_CELL_SEL_SH 8
+#define B_AX_EF_CELL_SEL_MSK 0x3
+
 #define R_AX_DBG_CTRL 0x0058
 #define B_AX_DBG_SEL1_4BIT GENMASK(31, 30)
 #define B_AX_DBG_SEL1_16BIT BIT(27)

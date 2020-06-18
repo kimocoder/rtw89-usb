@@ -241,6 +241,8 @@ struct rtw89_chip_info {
 	const struct rtw89_chip_ops *ops;
 	const char *fw_name;
 	u32 fifo_size;
+	u32 physical_size;
+	u32 log_efuse_size;
 };
 
 enum rtw89_qta_mode {
@@ -348,6 +350,11 @@ struct rtw89_fw_info {
 	u8 rec_seq;
 };
 
+struct rtw89_efuse {
+	u32 physical_size;
+	u32 logical_size;
+};
+
 struct rtw89_dev {
 	struct ieee80211_hw *hw;
 	struct device *dev;
@@ -355,6 +362,7 @@ struct rtw89_dev {
 	const struct rtw89_chip_info *chip;
 	struct rtw89_mac_info mac;
 	struct rtw89_fw_info fw;
+	struct rtw89_efuse efuse;
 	struct rtw89_hci_info hci;
 
 	/* used to protect txqs list */

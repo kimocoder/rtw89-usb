@@ -9,6 +9,7 @@
 #include "debug.h"
 #include "mac.h"
 #include "fw.h"
+#include "efuse.h"
 
 static struct ieee80211_channel rtw89_channels_2ghz[] = {
 	{ .center_freq = 2412, .hw_value = 1, },
@@ -343,6 +344,12 @@ static int rtw89_core_init(struct rtw89_dev *rtwdev)
 	ret = rtw89_fw_request(rtwdev);
 	if (ret) {
 		rtw89_err(rtwdev, "failed to request firmware\n");
+		return ret;
+	}
+
+	ret = rtw89_efuse_init(rtwdev);
+	if (ret) {
+		rtw89_err(rtwdev, "failed to init efuse\n");
 		return ret;
 	}
 

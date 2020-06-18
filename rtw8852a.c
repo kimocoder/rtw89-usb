@@ -13,5 +13,7 @@ const struct rtw89_chip_info rtw8852a_chip_info = {
 	.ops = &rtw8852a_chip_ops,
 	.fw_name = "rtw89/rtw8852a_fw.bin",
 	.fifo_size = 458752,
+	.physical_size = 1216,
+	.log_efuse_size = 1536,
 };
 EXPORT_SYMBOL(rtw8852a_chip_info);
