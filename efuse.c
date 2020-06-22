@@ -47,28 +47,11 @@ static bool rtw89_efuse_check_autoload(struct rtw89_dev *rtwdev)
 		return false;
 }
 
-static int rtw89_efuse_parse_map(struct rtw89_dev *rtwdev)
+
+static int rtw89_efuse_parse_physical(struct rtw89_dev *rtwdev, u8 *phy_map)
 {
-	u8 *log_map = NULL;
-	u8 *phy_map = NULL;
 	u32 addr, cnt, val32;
-	int log_size = rtwdev->efuse.logical_size;
 	int phy_size = rtwdev->efuse.physical_size;
-	int ret = -ENOMEM;
-
-	log_map  = kmalloc(log_size, GFP_KERNEL);
-	if (!log_map)
-		goto out;
-
-	phy_map  = kmalloc(phy_size, GFP_KERNEL);
-	if (!phy_map)
-		goto out_free_log_map;
-
-	ret = rtw89_efuse_switch_bank(rtwdev);
-	if (ret) {
-		rtw89_err(rtwdev, "fail to switch efuse bank\n");
-		goto out_free_phy_map;
-	}
 
 	pr_info("%s: phy_size:%u\n", __func__, phy_size);
 	for (addr = 0; addr < phy_size; addr++) {
@@ -85,8 +68,7 @@ static int rtw89_efuse_parse_map(struct rtw89_dev *rtwdev)
 
 		if (!cnt) {
 			rtw89_err(rtwdev, "fail to read efuse\n");
-			ret = -EINVAL;
-			goto out_free_phy_map;
+			return -EINVAL;
 		}
 
 		phy_map[addr] = (u8)(val32 & 0xFF);
@@ -94,14 +76,59 @@ static int rtw89_efuse_parse_map(struct rtw89_dev *rtwdev)
 
 	print_hex_dump(KERN_INFO, "efuse physical: ", DUMP_PREFIX_OFFSET,
 		       16, 1, phy_map, phy_size, false);
+	return 0;
+}
+
+static int rtw89_efuse_parse_logical(struct rtw89_dev *rtwdev, u8 *phy_map)
+{
+	u8 hdr = 0, hdr2 = 0;
+	u8 *log_map = NULL;
+	int log_size = rtwdev->efuse.logical_size;
+	int ret = -ENOMEM;
+
+	log_map  = kmalloc(log_size, GFP_KERNEL);
+	if (!log_map)
+		return ret;
+
+	pr_info("TODO: %s: parse logical efuse\n", __func__);
+	//while (hdr != 0xFF
+	ret = 0;
+
+//out_free_log_map:
+	kfree(log_map);
+	return ret;
+}
+
+static int rtw89_efuse_parse_map(struct rtw89_dev *rtwdev)
+{
+	u8 *phy_map;
+	int phy_size = rtwdev->efuse.physical_size;
+	int ret = -ENOMEM;
+
+	phy_map = kmalloc(phy_size, GFP_KERNEL);
+	if (!phy_map)
+		return ret;
+
+	ret = rtw89_efuse_switch_bank(rtwdev);
+	if (ret) {
+		rtw89_err(rtwdev, "fail to switch efuse bank\n");
+		goto out_free_phy_map;
+	}
+
+	ret = rtw89_efuse_parse_physical(rtwdev, phy_map);
+	if (ret) {
+		rtw89_err(rtwdev, "fail to parse physical efuse\n");
+		goto out_free_phy_map;
+	}
+
+	ret = rtw89_efuse_parse_logical(rtwdev, phy_map);
+	if (ret) {
+		rtw89_err(rtwdev, "fail to parse logical efuse\n");
+		goto out_free_phy_map;
+	}
 
 out_free_phy_map:
 	kfree(phy_map);
-
-out_free_log_map:
-	kfree(log_map);
-
-out:
 	return ret;
 }
 
