@@ -243,6 +243,7 @@ struct rtw89_chip_info {
 	u32 fifo_size;
 	u32 physical_size;
 	u32 log_efuse_size;
+	u32 sec_ctrl_efuse_size;
 };
 
 enum rtw89_qta_mode {

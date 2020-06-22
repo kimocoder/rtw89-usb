@@ -74,27 +74,66 @@ static int rtw89_efuse_parse_physical(struct rtw89_dev *rtwdev, u8 *phy_map)
 		phy_map[addr] = (u8)(val32 & 0xFF);
 	}
 
-	print_hex_dump(KERN_INFO, "efuse physical: ", DUMP_PREFIX_OFFSET,
-		       16, 1, phy_map, phy_size, false);
+	//print_hex_dump(KERN_INFO, "efuse physical: ", DUMP_PREFIX_OFFSET,
+	//	       16, 1, phy_map, phy_size, false);
 	return 0;
 }
 
 static int rtw89_efuse_parse_logical(struct rtw89_dev *rtwdev, u8 *phy_map)
 {
-	u8 hdr = 0, hdr2 = 0;
+	u8 hdr, hdr2, valid, i;
+	u8 offset, word_en;
 	u8 *log_map = NULL;
+	u32 sec_ctrl_size = rtwdev->chip->sec_ctrl_efuse_size;
+	u32 efuse_idx = sec_ctrl_size;
+	u32 eeprom_idx = 0;
+	int phy_size = rtwdev->efuse.physical_size;
 	int log_size = rtwdev->efuse.logical_size;
-	int ret = -ENOMEM;
+	int ret = -EINVAL;
 
 	log_map  = kmalloc(log_size, GFP_KERNEL);
 	if (!log_map)
-		return ret;
+		return -ENOMEM;
+	memset(log_map, 0xFF, log_size);
 
-	pr_info("TODO: %s: parse logical efuse\n", __func__);
-	//while (hdr != 0xFF
+	hdr = phy_map[efuse_idx++];
+	hdr2 = phy_map[efuse_idx++];
+	while ((hdr != 0xFF) && (hdr2 != 0xFF)) {
+		offset = ((hdr2 & 0xF0) >> 4) | ((hdr & 0x0F) << 4);
+		word_en = hdr2 & 0x0F;
+
+		if (efuse_idx >= phy_size - sec_ctrl_size - 1)
+			goto out_free_log_map;
+
+		for (i = 0; i < 4; i++) {
+			valid = (u8)((~(word_en >> i)) & BIT(0));
+			if (valid) {
+				eeprom_idx = (offset << 3) + (i << 1);
+				if ((eeprom_idx + 1) > log_size)
+					goto out_free_log_map;
+				log_map[eeprom_idx++] = phy_map[efuse_idx++];
+				if (efuse_idx > phy_size - sec_ctrl_size - 1)
+					goto out_free_log_map;
+				log_map[eeprom_idx] = phy_map[efuse_idx++];
+			}
+		}
+		hdr = phy_map[efuse_idx++];
+		hdr2 = phy_map[efuse_idx++];
+	}
+
+	//print_hex_dump(KERN_INFO, "efuse logical: ", DUMP_PREFIX_OFFSET,
+	//	       16, 1, log_map, log_size, false);
 	ret = 0;
 
-//out_free_log_map:
+out_free_log_map:
+	if (ret) {
+		rtw89_err(rtwdev, "fail to parse logical efuse: \n");
+		rtw89_err(rtwdev, "  efuse_idx(0x%X), phy_size(0x%X), ",
+			  efuse_idx, phy_size); 
+		rtw89_err(rtwdev, "sec_ctrl_size(0x%X)\n", sec_ctrl_size); 
+		rtw89_err(rtwdev, "  eeprom_idx(0x%X)", eeprom_idx);
+		rtw89_err(rtwdev, "  log_size(0x%X)", log_size);
+	}
 	kfree(log_map);
 	return ret;
 }
