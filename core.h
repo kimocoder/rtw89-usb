@@ -354,6 +354,8 @@ struct rtw89_fw_info {
 struct rtw89_efuse {
 	u32 physical_size;
 	u32 logical_size;
+	u8 pkg_type;
+	u8 rfe_type;
 };
 
 struct rtw89_dev {

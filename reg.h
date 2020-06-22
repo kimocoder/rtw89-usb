@@ -5,6 +5,22 @@
 #ifndef __RTW89_REG_H__
 #define __RTW89_REG_H__
 
+#define R_AX_SYS_FUNC_EN 0x0002
+#define B_AX_FEN_MREGEN BIT(15)
+#define B_AX_FEN_HWPDN BIT(14)
+#define B_AX_FEN_ELDR BIT(12)
+#define B_AX_FEN_DCORE BIT(11)
+#define B_AX_FEN_CPUEN BIT(10)
+#define B_AX_FEN_DIOE BIT(9)
+#define B_AX_FEN_PCIED BIT(8)
+#define B_AX_FEN_PPLL BIT(7)
+#define B_AX_FEN_PCIEA BIT(6)
+#define B_AX_FEN_USBD BIT(4)
+#define B_AX_FEN_UPLL BIT(3)
+#define B_AX_FEN_USBA BIT(2)
+#define B_AX_FEN_BB_GLB_RSTN BIT(1)
+#define B_AX_FEN_BBRSTB BIT(0)
+
 #define R_AX_SYS_CLK_CTRL 0x0008
 #define B_AX_CPU_CLK_EN BIT(14)
 
@@ -63,6 +79,24 @@
 #define R_AX_BOOT_REASON 0x01E6
 #define B_AX_BOOT_REASON_MASK GENMASK(2, 0)
 
+#define R_AX_WLRF_CTRL 0x02F0
+#define B_AX_WLRF1_CTRL_7 BIT(15)
+#define B_AX_WLRF1_CTRL_6 BIT(14)
+#define B_AX_WLRF1_CTRL_5 BIT(13)
+#define B_AX_WLRF1_CTRL_4 BIT(12)
+#define B_AX_WLRF1_CTRL_3 BIT(11)
+#define B_AX_WLRF1_CTRL_2 BIT(10)
+#define B_AX_WLRF1_CTRL_1 BIT(9)
+#define B_AX_WLRF1_CTRL_0 BIT(8)
+#define B_AX_WLRF_CTRL_7 BIT(7)
+#define B_AX_WLRF_CTRL_6 BIT(6)
+#define B_AX_WLRF_CTRL_5 BIT(5)
+#define B_AX_WLRF_CTRL_4 BIT(4)
+#define B_AX_WLRF_CTRL_3 BIT(3)
+#define B_AX_WLRF_CTRL_2 BIT(2)
+#define B_AX_WLRF_CTRL_1 BIT(1)
+#define B_AX_WLRF_CTRL_0 BIT(0)
+
 #define R_AX_PCIE_DBG_CTRL 0x11C0
 #define B_AX_DBG_SEL GENMASK(23, 16)
 #define B_AX_LOOPBACK_DBG_SEL GENMASK(15, 13)
@@ -70,6 +104,11 @@
 #define B_AX_MRD_TIMEOUT_EN BIT(10)
 #define B_AX_ASFF_FULL_NO_STK BIT(1)
 #define B_AX_EN_STUCK_DBG BIT(0)
+
+#define R_AX_PHYREG_SET 0x8040
+#define B_AX_PHYREG_SET_SH 0
+#define B_AX_PHYREG_SET_MSK 0xf
+#define B_AX_PHYREG_SET_ALL_CYCLE BIT(3)
 
 #define R_AX_HCI_FUNC_EN 0x8380
 #define B_AX_HCI_RXDMA_EN BIT(1)

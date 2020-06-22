@@ -173,7 +173,7 @@ out_free_phy_map:
 
 int rtw89_efuse_process(struct rtw89_dev *rtwdev)
 {
-	int ret = -EINVAL;
+	int ret;
 
 	if (rtw89_efuse_check_autoload(rtwdev))
 		pr_info("efuse autoload SUCCESS\n");

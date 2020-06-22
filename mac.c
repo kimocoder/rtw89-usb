@@ -700,8 +700,8 @@ static int rtw89_mac_sub_pwr_seq(struct rtw89_dev *rtwdev, u8 cut_msk,
 static int rtw89_mac_pwr_seq(struct rtw89_dev *rtwdev,
 			     struct rtw89_pwr_cfg **cfg_seq)
 {
-	u8 cut_mask;
-	u8 intf_mask;
+	//u8 cut_mask;
+	//u8 intf_mask;
 	u32 idx = 0;
 	struct rtw89_pwr_cfg *cfg;
 	int ret;
@@ -1839,7 +1839,7 @@ static int addr_cam_init(struct rtw89_dev *rtwdev, u8 band)
 
 static int scheduler_init(struct rtw89_dev *rtwdev, u8 band)
 {
-	u32 val, reg;
+	//u32 val, reg;
 	u32 ret;
 
 	ret = rtw89_mac_check_mac_en(rtwdev, band, RTW89_CMAC_SEL);
@@ -1993,7 +1993,7 @@ static int rmac_init(struct rtw89_dev *rtwdev, u8 band)
 #define TRXCFG_RMAC_DATA_TO	15
 	int ret;
 	u32 reg;
-	u16 val;
+	//u16 val;
 
 	ret = rtw89_mac_check_mac_en(rtwdev, band, RTW89_CMAC_SEL);
 	if (ret)
@@ -2552,12 +2552,41 @@ static int rtw89_mac_enable_cpu(struct rtw89_dev *rtwdev, u8 boot_reason,
 	return 0;
 }
 
+static void rtw89_mac_enable_bb_rf(struct rtw89_dev *rtwdev, bool enable)
+{
+	if (enable) {
+		rtw89_write8_set(rtwdev, R_AX_SYS_FUNC_EN,
+				 B_AX_FEN_BBRSTB | B_AX_FEN_BB_GLB_RSTN);
+
+		rtw89_write32_set(rtwdev, R_AX_WLRF_CTRL,
+				  B_AX_WLRF1_CTRL_7 | B_AX_WLRF1_CTRL_1 |
+				  B_AX_WLRF_CTRL_7 | B_AX_WLRF_CTRL_1);
+
+		rtw89_write8_set(rtwdev, R_AX_PHYREG_SET,
+				 B_AX_PHYREG_SET_ALL_CYCLE);
+	} else {
+		rtw89_write8_clr(rtwdev, R_AX_SYS_FUNC_EN,
+				 B_AX_FEN_BBRSTB | B_AX_FEN_BB_GLB_RSTN);
+
+		rtw89_write32_clr(rtwdev, R_AX_WLRF_CTRL,
+				  B_AX_WLRF1_CTRL_7 | B_AX_WLRF1_CTRL_1 |
+				  B_AX_WLRF_CTRL_7 | B_AX_WLRF_CTRL_1);
+
+		rtw89_write8_clr(rtwdev, R_AX_PHYREG_SET,
+				 B_AX_PHYREG_SET_ALL_CYCLE);
+	}
+}
+
+static void rtw89_mac_reset_bb_rf(struct rtw89_dev *rtwdev)
+{
+	rtw89_mac_enable_bb_rf(rtwdev, 0);
+	rtw89_mac_enable_bb_rf(rtwdev, 1);
+}
+
 int rtw89_mac_init(struct rtw89_dev *rtwdev)
 {
 	int ret;
 
-	pr_info("%s ==>\n", __func__);
-	pr_info("mac power switch\n");
 	ret = rtw89_mac_power_switch(rtwdev, true);
 	if (ret) {
 		rtw89_mac_power_switch(rtwdev, false);
@@ -2566,7 +2595,6 @@ int rtw89_mac_init(struct rtw89_dev *rtwdev)
 			return ret;
 	}
 
-	pr_info("mac enable cpu\n");
 	ret = rtw89_mac_enable_cpu(rtwdev, 0, true);
 	if (ret)
 		return ret;
@@ -2577,30 +2605,28 @@ int rtw89_mac_init(struct rtw89_dev *rtwdev)
 			return ret;
 	}
 
-	pr_info("mac sys init\n");
 	ret = rtw89_mac_sys_init(rtwdev);
 	if (ret)
 		return ret;
 
-	pr_info("mac trx init\n");
 	ret = rtw89_mac_trx_init(rtwdev);
 	if (ret)
 		return ret;
 
-	pr_info("wait request firmware\n");
 	ret = rtw89_fw_wait_completion(rtwdev);
 	if (ret)
 		return ret;
 
-	pr_info("download firmware\n");
 	ret = rtw89_fw_download(rtwdev);
 	if (ret)
 		return ret; 
 
-	pr_info("efuse process\n");
 	ret = rtw89_efuse_process(rtwdev);
 	if (ret)
 		return ret;
+
+	pr_info("reset bb\n");
+	rtw89_mac_reset_bb_rf(rtwdev);
 
 	pr_info("%s: stop here first\n", __func__);
 	return -EINVAL;

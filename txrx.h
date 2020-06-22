@@ -34,21 +34,21 @@ struct rtw89_txdesc_wd_body {
 	u16 pld:12;
 
 	/* dword2 */
-	u16 txpktsize:14;
-	u8 ru_tc:3;
-	u8 qsel:6;
-	u8 tid_ind:1;
-	u8 macid:7;
-	u8 resv2:1;
+	u32 txpktsize:14;
+	u32 ru_tc:3;
+	u32 qsel:6;
+	u32 tid_ind:1;
+	u32 macid:7;
+	u32 resv2:1;
 
 	/* dword3 */
-	u16 wifi_seq:12;
-	u8 agg_en:1;
-	u8 bk:1;
-	u8 rts_tc:6;
-	u8 data_tc:6;
-	u8 mu_2nd_tc:3;
-	u8 mu_tc:3;
+	u32 wifi_seq:12;
+	u32 agg_en:1;
+	u32 bk:1;
+	u32 rts_tc:6;
+	u32 data_tc:6;
+	u32 mu_2nd_tc:3;
+	u32 mu_tc:3;
 
 	/* dword4 */
 	u16 checksum;

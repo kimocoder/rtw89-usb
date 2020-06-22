@@ -108,8 +108,8 @@ static void rtw89_fw_update_ver(struct rtw89_dev *rtwdev,
 	fw_info->rec_seq = 0;
 }
 
-static int rtw89_fw_send_h2c_mac(struct rtw89_dev *rtwdev, u8 *h2c_pkt, u32 len,
-				 u8 cl, u8 func)
+static int rtw89_fw_send_h2c_mac(struct rtw89_dev *rtwdev, const u8 *h2c_pkt,
+				 u32 len, u8 cl, u8 func)
 {
 	struct rtw89_fw_info *fw_info = &rtwdev->fw;
 	struct rtw89_fw_cmd_hdr *fc_hdr;
@@ -156,10 +156,8 @@ err_free_skb:
 }
 
 static int rtw89_fw_sec_send_h2c(struct rtw89_dev *rtwdev,
-				 u8 *h2c_pkt, u32 len)
+				 const u8 *h2c_pkt, u32 len)
 {
-	struct rtw89_fw_info *fw_info = &rtwdev->fw;
-	struct rtw89_fw_cmd_hdr *fc_hdr;
 	struct rtw89_txdesc_wd_body *wd_body;
 	struct sk_buff *skb;
 	int headsize = RTW89_TX_WD_BODY_LEN;
@@ -224,7 +222,7 @@ static int rtw89_fwdl_phase1(struct rtw89_dev *rtwdev)
 	struct rtw89_fw_info *fw_info = &rtwdev->fw;
 	struct rtw89_fw_bin_info *bin_info = fw_info->bin_info;
 	const struct firmware *firmware = fw_info->firmware;
-	u8 *buf;
+	const u8 *buf;
 	int len;
 	int ret;
 
@@ -246,7 +244,6 @@ static u32 rtw89_fw_sections_download(struct rtw89_dev *rtwdev,
 	u8 *section = info->addr;
 	u32 residue_len = info->len;
 	u32 pkt_len;
-	u8 *buf;
 	u32 ret;
 
 	while (residue_len) {
@@ -272,11 +269,8 @@ static int rtw89_fwdl_phase2(struct rtw89_dev *rtwdev)
 {
 	struct rtw89_fw_info *fw_info = &rtwdev->fw;
 	struct rtw89_fw_bin_info *bin_info = fw_info->bin_info;
-	const struct firmware *firmware = fw_info->firmware;
 	struct rtw89_fw_hdr_section_info *section_info = bin_info->section_info;
 	u32 section_num = bin_info->section_num;
-	u8 *buf;
-	int len;
 	int ret;
 
 	while (section_num > 0) {
@@ -309,6 +303,8 @@ int rtw89_fw_download(struct rtw89_dev *rtwdev)
 	ret = rtw89_fwdl_phase2(rtwdev);
 	if (unlikely(ret))
 		return ret;
+
+	return 0;
 }
 
 int rtw89_fw_wait_completion(struct rtw89_dev *rtwdev)
@@ -333,7 +329,7 @@ static void rtw89_fw_request_cb(const struct firmware *firmware, void *context)
 		goto err_out;
 	}
 
-	pr_info("%s: firmware size=%llu\n", __func__, firmware->size);
+	pr_info("%s: firmware size=%lu\n", __func__, firmware->size);
 	fw_info->firmware = firmware;
 	fw_info->bin_info = kmalloc(sizeof(*fw_info->bin_info), GFP_ATOMIC);
 	if (!fw_info->bin_info) {
@@ -341,7 +337,7 @@ static void rtw89_fw_request_cb(const struct firmware *firmware, void *context)
 		goto err_out;
 	}
 
-	ret = rtw89_fw_hdr_parser(rtwdev, firmware->data, firmware->size,
+	ret = rtw89_fw_hdr_parser(rtwdev, (u8 *)firmware->data, firmware->size,
 				  fw_info->bin_info);
 	if (ret) {
 		rtw89_err(rtwdev, "failed to parse fw header\n");

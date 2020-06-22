@@ -1058,7 +1058,7 @@ static void rtw_usb_intf_deinit(struct rtw89_dev *rtwdev,
 	mutex_destroy(&rtwusb->usb_buf_mutex);
 }
 
-int rtw_usb_probe(struct usb_interface *intf,
+static int rtw_usb_probe(struct usb_interface *intf,
 			 const struct usb_device_id *id)
 {
 	struct rtw89_dev *rtwdev;
@@ -1127,9 +1127,8 @@ err_release_hw:
 
 	return ret;
 }
-EXPORT_SYMBOL(rtw_usb_probe);
 
-void rtw_usb_disconnect(struct usb_interface *intf)
+static void rtw_usb_disconnect(struct usb_interface *intf)
 {
 	struct ieee80211_hw *hw = usb_get_intfdata(intf);
 	struct rtw89_dev *rtwdev;
@@ -1152,7 +1151,6 @@ void rtw_usb_disconnect(struct usb_interface *intf)
 	rtw_usb_intf_deinit(rtwdev, intf);
 	ieee80211_free_hw(hw);
 }
-EXPORT_SYMBOL(rtw_usb_disconnect);
 
 static const struct usb_device_id rtw_usb_id_table[] = {
 	{ RTK_USB_DEVICE_AND_INTERFACE(RTW_USB_VENDOR_ID_REALTEK,
