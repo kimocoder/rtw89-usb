@@ -5,6 +5,7 @@
 #include "core.h"
 #include "reg.h"
 #include "phy.h"
+#include "rtw8852a_table.h"
 #include "rtw8852a.h"
 
 
@@ -57,5 +58,6 @@ const struct rtw89_chip_info rtw8852a_chip_info = {
 	.physical_size = 1216,
 	.log_efuse_size = 1536,
 	.sec_ctrl_efuse_size = 4,
+	.bb_tbl = &rtw8852a_bb_tbl,
 };
 EXPORT_SYMBOL(rtw8852a_chip_info);

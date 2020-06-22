@@ -245,6 +245,8 @@ struct rtw89_chip_info {
 	u32 physical_size;
 	u32 log_efuse_size;
 	u32 sec_ctrl_efuse_size;
+
+	const struct rtw89_table *bb_tbl;
 };
 
 enum rtw89_qta_mode {
@@ -366,6 +368,35 @@ enum rtw89_rf_path {
 	RF_PATH_D = 3,
 };
 
+struct rtw89_phy_cond {
+#ifdef __LITTLE_ENDIAN
+	u32 cut:8;
+	u32 rsvd1:8;
+	u32 rfe:8;
+	u32 rsvd2:4;
+	u32 branch:2;
+	u32 neg:1;
+	u32 pos:1;
+#else
+	u32 pos:1;
+	u32 neg:1;
+	u32 branch:2;
+	u32 rsvd2:4;
+	u32 rfe:8;
+	u32 rsvd1:8;
+	u32 cut:8;
+#endif
+	/* for intf:4 */
+	#define INTF_PCIE	BIT(0)
+	#define INTF_USB	BIT(1)
+	#define INTF_SDIO	BIT(2)
+	/* for branch:2 */
+	#define BRANCH_IF	0
+	#define BRANCH_ELIF	1
+	#define BRANCH_ELSE	2
+	#define BRANCH_ENDIF	3
+};
+
 struct rtw89_table {
 	const void *data;
 	const u32 size;
@@ -374,6 +405,12 @@ struct rtw89_table {
 		       u32 addr, u32 data);
 	enum rtw89_rf_path rf_path;
 };
+
+static inline void rtw89_load_table(struct rtw89_dev *rtwdev,
+				    const struct rtw89_table *tbl)
+{
+	(*tbl->parse)(rtwdev, tbl);
+}
 
 struct rtw89_dev {
 	struct ieee80211_hw *hw;
