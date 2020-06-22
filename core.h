@@ -217,6 +217,7 @@ struct rtw89_hci_info {
 };
 
 struct rtw89_chip_ops {
+	void (*phy_set_param)(struct rtw89_dev *rtwdev);
 };
 
 enum rtw89_dma_ch {
@@ -356,6 +357,22 @@ struct rtw89_efuse {
 	u32 logical_size;
 	u8 pkg_type;
 	u8 rfe_type;
+};
+
+enum rtw89_rf_path {
+	RF_PATH_A = 0,
+	RF_PATH_B = 1,
+	RF_PATH_C = 2,
+	RF_PATH_D = 3,
+};
+
+struct rtw89_table {
+	const void *data;
+	const u32 size;
+	void (*parse)(struct rtw89_dev *rtwdev, const struct rtw89_table *tbl);
+	void (*do_cfg)(struct rtw89_dev *rtwdev, const struct rtw89_table *tbl,
+		       u32 addr, u32 data);
+	enum rtw89_rf_path rf_path;
 };
 
 struct rtw89_dev {

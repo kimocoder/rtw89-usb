@@ -2552,37 +2552,6 @@ static int rtw89_mac_enable_cpu(struct rtw89_dev *rtwdev, u8 boot_reason,
 	return 0;
 }
 
-static void rtw89_mac_enable_bb_rf(struct rtw89_dev *rtwdev, bool enable)
-{
-	if (enable) {
-		rtw89_write8_set(rtwdev, R_AX_SYS_FUNC_EN,
-				 B_AX_FEN_BBRSTB | B_AX_FEN_BB_GLB_RSTN);
-
-		rtw89_write32_set(rtwdev, R_AX_WLRF_CTRL,
-				  B_AX_WLRF1_CTRL_7 | B_AX_WLRF1_CTRL_1 |
-				  B_AX_WLRF_CTRL_7 | B_AX_WLRF_CTRL_1);
-
-		rtw89_write8_set(rtwdev, R_AX_PHYREG_SET,
-				 B_AX_PHYREG_SET_ALL_CYCLE);
-	} else {
-		rtw89_write8_clr(rtwdev, R_AX_SYS_FUNC_EN,
-				 B_AX_FEN_BBRSTB | B_AX_FEN_BB_GLB_RSTN);
-
-		rtw89_write32_clr(rtwdev, R_AX_WLRF_CTRL,
-				  B_AX_WLRF1_CTRL_7 | B_AX_WLRF1_CTRL_1 |
-				  B_AX_WLRF_CTRL_7 | B_AX_WLRF_CTRL_1);
-
-		rtw89_write8_clr(rtwdev, R_AX_PHYREG_SET,
-				 B_AX_PHYREG_SET_ALL_CYCLE);
-	}
-}
-
-static void rtw89_mac_reset_bb_rf(struct rtw89_dev *rtwdev)
-{
-	rtw89_mac_enable_bb_rf(rtwdev, 0);
-	rtw89_mac_enable_bb_rf(rtwdev, 1);
-}
-
 int rtw89_mac_init(struct rtw89_dev *rtwdev)
 {
 	int ret;
@@ -2626,7 +2595,7 @@ int rtw89_mac_init(struct rtw89_dev *rtwdev)
 		return ret;
 
 	pr_info("reset bb\n");
-	rtw89_mac_reset_bb_rf(rtwdev);
+	rtwdev->chip->ops->phy_set_param(rtwdev);
 
 	pr_info("%s: stop here first\n", __func__);
 	return -EINVAL;
