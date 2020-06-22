@@ -6,5 +6,6 @@
 #define __RTW8852A_TABLE_H__
 
 extern const struct rtw89_table rtw8852a_bb_tbl;
+extern const struct rtw89_table rtw8852a_rf_a_tbl;
 
 #endif

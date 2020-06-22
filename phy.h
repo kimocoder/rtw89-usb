@@ -7,11 +7,15 @@
 
 #include "debug.h"
 
-void rtw89_phy_load_tables(struct rtw89_dev *rtwdev);
 void rtw89_phy_cfg_bb(struct rtw89_dev *rtwdev, const struct rtw89_table *tbl,
 		      u32 addr, u32 data);
+void rtw89_phy_cfg_rf(struct rtw89_dev *rtwdev, const struct rtw89_table *tbl,
+		      u32 addr, u32 data);
+void rtw89_phy_load_tables(struct rtw89_dev *rtwdev);
 void rtw89_parse_tbl_phy_cond(struct rtw89_dev *rtwdev,
 			      const struct rtw89_table *tbl);
+void rtw89_parse_tbl_phy_cond1(struct rtw89_dev *rtwdev,
+			       const struct rtw89_table *tbl);
 
 #define RTW89_DECL_TABLE_PHY_COND_CORE(name, cfg, path)	\
 const struct rtw89_table name ## _tbl = {			\
@@ -22,8 +26,21 @@ const struct rtw89_table name ## _tbl = {			\
 	.rf_path = path,				\
 }
 
+#define RTW89_DECL_TABLE_PHY_COND_CORE1(name, cfg, path)	\
+const struct rtw89_table name ## _tbl = {			\
+	.data = name,					\
+	.size = ARRAY_SIZE(name),			\
+	.parse = rtw89_parse_tbl_phy_cond1,		\
+	.do_cfg = cfg,					\
+	.rf_path = path,				\
+}
+
 #define RTW89_DECL_TABLE_PHY_COND(name, cfg)		\
 	RTW89_DECL_TABLE_PHY_COND_CORE(name, cfg, 0)
+
+#define RTW89_DECL_TABLE_RF_RADIO(name, path)		\
+	RTW89_DECL_TABLE_PHY_COND_CORE1(name, rtw89_phy_cfg_rf, \
+					RF_PATH_ ## path)
 
 
 #endif

@@ -20,7 +20,7 @@ def parse(filename):
 		if not items[1]:
 			continue
 
-		print('\t%s, %s,' % (items[0], items[1]))
+		print('\t%s, %s,' % (items[0].strip(), (items[1].split())[0].strip()))
 	fo.close()
 
 if __name__ == "__main__":

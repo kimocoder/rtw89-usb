@@ -9,6 +9,8 @@
 #include <linux/bitfield.h>
 #include <linux/firmware.h>
 
+#define RTW89_RF_PATH_MAX 4
+
 /**
  * read_poll_timeout - Periodically poll an address until a condition is
  *			met or a timeout occurs
@@ -247,6 +249,7 @@ struct rtw89_chip_info {
 	u32 sec_ctrl_efuse_size;
 
 	const struct rtw89_table *bb_tbl;
+	const struct rtw89_table *rf_tbl[RTW89_RF_PATH_MAX];
 };
 
 enum rtw89_qta_mode {
@@ -385,6 +388,35 @@ struct rtw89_phy_cond {
 	u32 rfe:8;
 	u32 rsvd1:8;
 	u32 cut:8;
+#endif
+	/* for intf:4 */
+	#define INTF_PCIE	BIT(0)
+	#define INTF_USB	BIT(1)
+	#define INTF_SDIO	BIT(2)
+	/* for branch:2 */
+	#define BRANCH_IF	0
+	#define BRANCH_ELIF	1
+	#define BRANCH_ELSE	2
+	#define BRANCH_ENDIF	3
+};
+
+struct rtw89_phy_cond1 {
+#ifdef __LITTLE_ENDIAN
+	u32 rfe:8;
+	u32 pkg:8;
+	u32 cut:8;
+	u32 rsvd1:4;
+	u32 branch:2;
+	u32 neg:1;
+	u32 pos:1;
+#else
+	u32 pos:1;
+	u32 neg:1;
+	u32 branch:2;
+	u32 rsvd1:4;
+	u32 cut:8;
+	u32 pkg:8;
+	u32 rfe:8;
 #endif
 	/* for intf:4 */
 	#define INTF_PCIE	BIT(0)
