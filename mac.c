@@ -2613,7 +2613,7 @@ int rtw89_mac_init(struct rtw89_dev *rtwdev)
 
 
 int rtw89_mac_send_h2c(struct rtw89_dev *rtwdev, const u8 *h2c_pkt, u32 len,
-		       u8 cat, u8 cl, u8 func)
+		       u8 cat, u8 cl, u8 func, bool is_fwdl)
 {
 	struct rtw89_fw_info *fw_info = &rtwdev->fw;
 	struct rtw89_fw_cmd_hdr *fc_hdr;
@@ -2641,6 +2641,8 @@ int rtw89_mac_send_h2c(struct rtw89_dev *rtwdev, const u8 *h2c_pkt, u32 len,
 	fc_hdr->cl = cl;
 	fc_hdr->func = func;
 	fc_hdr->h2c_seq = fw_info->h2c_seq;
+	if (!is_fwdl)
+		fc_hdr->rec_ack = !(fw_info->h2c_seq & 0x3);
 	fc_hdr->len = len + RTW89_FWCMD_HDR_LEN;
 
 	/* TXDESC */

@@ -176,6 +176,7 @@ static int rtw89_fwdl_phase1(struct rtw89_dev *rtwdev)
 	struct rtw89_fw_info *fw_info = &rtwdev->fw;
 	struct rtw89_fw_bin_info *bin_info = fw_info->bin_info;
 	const struct firmware *firmware = fw_info->firmware;
+	bool is_fwdl = true;
 	const u8 *buf;
 	int len;
 	int ret;
@@ -185,7 +186,7 @@ static int rtw89_fwdl_phase1(struct rtw89_dev *rtwdev)
 	ret = rtw89_mac_send_h2c(rtwdev, buf, len,
 				 RTW89_FWCMD_H2C_CAT_MAC,
 				 RTW89_FWCMD_H2C_CL_FWDL,
-				 RTW89_FWCMD_H2C_FUNC_FWHDR_DL);
+				 RTW89_FWCMD_H2C_FUNC_FWHDR_DL, is_fwdl);
 	if (unlikely(ret))
 		return ret;
 

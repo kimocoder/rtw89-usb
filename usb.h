@@ -96,6 +96,12 @@ struct rtw_usb_tx_data {
 	u8 sn;
 };
 
+struct rtw_usb_tx_cb {
+	struct sk_buff *skb;
+	struct completion done;
+	int status;
+};
+
 struct rtw_usb {
 	struct rtw89_dev *rtwdev;
 	struct usb_device *udev;
@@ -117,6 +123,7 @@ struct rtw_usb {
 	u8 usb_speed;
 	u8 usb_txagg_num;
 
+	struct completion done;
 	struct workqueue_struct *txwq, *rxwq;
 
 	struct sk_buff_head tx_queue[RTW89_DMA_CH_NUM];

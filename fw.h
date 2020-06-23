@@ -119,21 +119,29 @@ struct rtw89_fw_hdr {
 #define RTW89_FWCMD_H2C_FUNC_FWHDR_DL 0x0
 #define RTW89_FWCMD_H2C_FUNC_FWHDR_REDL 0x1
 
+#define RTW89_FWCMD_H2C_RADIO_A_INIT_0 0x0
+#define RTW89_FWCMD_H2C_RADIO_A_INIT_1 0x1
+#define RTW89_FWCMD_H2C_RADIO_A_INIT_2 0x2
+#define RTW89_FWCMD_H2C_RADIO_B_INIT_0 0x3
+#define RTW89_FWCMD_H2C_RADIO_B_INIT_1 0x4
+#define RTW89_FWCMD_H2C_RADIO_B_INIT_2 0x5
+
 struct rtw89_fw_cmd_hdr {
 	/* dword0 */
 	u8 cat:2;
 	u8 cl:6;
 	u8 func;
-	u8 del_type;
+	u8 del_type:4;
+	u8 rsvd1:4;
 	u8 h2c_seq;
 	/* dword1 */
 	u16 len:14;
-	u8 rec_ack:1;
-	u8 done_ack:1;
-	u8 seq_valid:1;
-	u8 seq:3;
-	u8 seq_stop:1;
-	u16 res1:12;
+	u16 rec_ack:1;
+	u16 done_ack:1;
+	u16 seq_valid:1;
+	u16 seq:3;
+	u16 seq_stop:1;
+	u16 rsvd2:11;
 } __packed;
 
 int rtw89_fw_check_rdy(struct rtw89_dev *rtwdev);

@@ -32,14 +32,21 @@ union rtw89_phy_table_tile1 {
 int rtw89_halrf_send_h2c(struct rtw89_dev *rtwdev,
 			  u8 *buf, u16 len, u8 cl, u8 func)
 {
+	struct rtw89_fw_info *fw_info = &rtwdev->fw;
+	bool is_fwdl = false;
 	int ret;
+
+	rtwdev->debug = true;
 
 	ret = rtw89_mac_send_h2c(rtwdev, buf, len,
 				 RTW89_FWCMD_H2C_CAT_OUTSRC,
-				 cl, func);
+				 cl, func, is_fwdl);
 	if (ret)
 		rtw89_err(rtwdev, "fail to send h2c\n");
 
+	fw_info->h2c_seq++;
+
+	rtwdev->debug = false;
 	return ret;
 }
 
@@ -113,6 +120,24 @@ static void rtw89_halrf_radio_store_reg(struct rtw89_dev *rtwdev,
 		break;
 	}
 }
+
+static void rtw89_halrf_radio_config_to_fw(struct rtw89_dev *rtwdev,
+					   enum rtw89_rf_path path)
+{
+	struct rtw89_halrf_radio_info *radio = &rtwdev->rf.radio_info;
+
+	if (path == RF_PATH_A) {
+		rtw89_halrf_send_h2c(rtwdev, (u8 *)radio->radio_a_parameter[0],
+				     512, 8, RTW89_FWCMD_H2C_RADIO_A_INIT_0);
+	} else if (path == RF_PATH_B) {
+		rtw89_info(rtwdev, "TODO: %s\n", __func__);
+	} else {
+		rtw89_err(rtwdev, "fail to set radio, path:%d\n", path);
+		return;
+	}
+
+}
+
 
 void rtw89_phy_cfg_rf(struct rtw89_dev *rtwdev, const struct rtw89_table *tbl,
 		      u32 addr, u32 data)
@@ -216,7 +241,7 @@ void rtw89_parse_tbl_phy_cond1(struct rtw89_dev *rtwdev,
 		} else if (is_matched)
 			(*tbl->do_cfg)(rtwdev, tbl, p->cfg.addr, p->cfg.data);
 	}
-	//halrf_config_8852a_write_radio_a_reg_to_fw()
+	rtw89_halrf_radio_config_to_fw(rtwdev, tbl->rf_path);
 }
 
 void rtw89_parse_tbl_phy_cond(struct rtw89_dev *rtwdev,
@@ -311,7 +336,7 @@ void rtw89_parse_tbl_phy_cond(struct rtw89_dev *rtwdev,
 	}
 }
 
-static void rtw89_phy_reset_bb(struct rtw89_dev *rtwdev)
+static void rtw89_phy_reset(struct rtw89_dev *rtwdev)
 {
 	/* PHY 0 */
 	rtw89_write32(rtwdev, 0x804 | RTW89_BB_OFST, 0xFF);
@@ -328,10 +353,13 @@ void rtw89_phy_load_tables(struct rtw89_dev *rtwdev)
 	const struct rtw89_chip_info *chip = rtwdev->chip;
 	const struct rtw89_table *tbl;
 
+	pr_info("%s: bb_tbl\n", __func__);
 	rtw89_load_table(rtwdev, chip->bb_tbl);
-	rtw89_phy_reset_bb(rtwdev);
+	pr_info("%s: phy reset \n", __func__);
+	rtw89_phy_reset(rtwdev);
+	pr_info("%s: load table radio A \n", __func__);
 	tbl = chip->rf_tbl[RF_PATH_A];
 	rtw89_load_table(rtwdev, tbl);
-	tbl = chip->rf_tbl[RF_PATH_B];
-	rtw89_load_table(rtwdev, tbl);
+	//tbl = chip->rf_tbl[RF_PATH_B];
+	//rtw89_load_table(rtwdev, tbl);
 }

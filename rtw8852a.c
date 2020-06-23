@@ -42,7 +42,9 @@ static void rtw8852a_reset_bb_rf(struct rtw89_dev *rtwdev)
 
 static void rtw8852a_phy_set_param(struct rtw89_dev *rtwdev)
 {
+	pr_info("%s: reset bb/rf\n", __func__);
 	rtw8852a_reset_bb_rf(rtwdev);
+	pr_info("%s: phy load tables\n", __func__);
 	rtw89_phy_load_tables(rtwdev);
 }
 

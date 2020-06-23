@@ -9,7 +9,7 @@
 #include "debug.h"
 #include "usb.h"
 
-#define RTW_USB_MSG_TIMEOUT	3000 /* (ms) */
+#define RTW_USB_MSG_TIMEOUT	300 /* (ms) */
 
 static void rtw_usb_tx_agg(struct rtw_usb *rtwusb, struct sk_buff *skb);
 static void rtw_usb_read_port(struct rtw89_dev *rtwdev, u8 addr,
@@ -350,16 +350,24 @@ static void rtw_usb_indicate_tx_status(struct rtw89_dev *rtwdev,
 
 static void rtw_usb_write_port_complete(struct urb *urb)
 {
+	struct rtw_usb_tx_cb *tcb;
 	struct sk_buff *skb;
 
-	if (!urb->status) { /* success */
-	} else {
-		pr_err("failed to USB write port\n");
+	tcb = (struct rtw_usb_tx_cb *)urb->context;
+	if (unlikely(!tcb)) {
+		pr_err("fail to get txcb at USB write callback\n");
+		return;
 	}
 
-	skb = (struct sk_buff *)urb->context;
+	skb = tcb->skb;
+	tcb->status = urb->status;
+	if (!urb->status) { /* success */
+	} else {
+		pr_err("failed to USB write port: %d\n", urb->status);
+	}
+
 	dev_kfree_skb(skb);
-	usb_free_urb(urb);
+	complete(&tcb->done);
 }
 
 static int rtw_usb_write_port(struct rtw89_dev *rtwdev,
@@ -367,12 +375,14 @@ static int rtw_usb_write_port(struct rtw89_dev *rtwdev,
 			      struct sk_buff *skb)
 {
 	struct rtw_usb *rtwusb = rtw_get_usb_priv(rtwdev);
+	struct rtw_usb_tx_cb txcb;
 	struct usb_device *usbd = rtwusb->udev;
 	struct urb *urb;
+	unsigned long expire;
 	unsigned int pipe;
 	bool is_write = true;
-	u8 bulkout_id;
 	int ret;
+	u8 bulkout_id;
 
 	bulkout_id = rtw_usb_get_bulkout_id(rtwdev, dma_ch);
 	pipe = rtw_usb_get_pipe(rtwdev, bulkout_id, is_write);
@@ -381,40 +391,32 @@ static int rtw_usb_write_port(struct rtw89_dev *rtwdev,
 	if (!urb)
 		return -ENOMEM;
 
+	init_completion(&txcb.done);
+	txcb.skb = skb;
 	usb_fill_bulk_urb(urb, usbd, pipe, skb->data, skb->len,
-			  rtw_usb_write_port_complete, skb);
+			  rtw_usb_write_port_complete, &txcb);
 
 	urb->transfer_flags |= URB_ZERO_PACKET;
 	ret = usb_submit_urb(urb, GFP_ATOMIC);
 	if (unlikely(ret)) {
-		rtw89_err(rtwdev, "failed to do USB write port\n");
-		usb_free_urb(urb);
+		rtw89_err(rtwdev, "fail to submit urb, ret=%d\n", ret);
+		goto out;
 	}
 
-	return ret;
-}
+	expire = msecs_to_jiffies(RTW_USB_MSG_TIMEOUT);
+	if (!wait_for_completion_timeout(&txcb.done, expire)) {
+		usb_kill_urb(urb);
+		ret = (txcb.status == -ENOENT ? -ETIMEDOUT : txcb.status);
 
-static int rtw_usb_write_port_wait(struct rtw89_dev *rtwdev,
-				   enum rtw89_dma_ch dma_ch,
-				   struct sk_buff *skb)
-{
-	struct rtw_usb *rtwusb = rtw_get_usb_priv(rtwdev);
-	struct usb_device *usbd = rtwusb->udev;
-	struct urb *urb;
-	unsigned int pipe;
-	bool is_write = true;
-	u8 bulkout_id;
-	int transfer;
-	int ret;
+		pr_err("%s timed out on ep%d%s len=%u/%u\n",
+		       __func__, usb_endpoint_num(&urb->ep->desc),
+		       usb_urb_dir_in(urb) ? "in" : "out",
+		       urb->actual_length, urb->transfer_buffer_length);
+	} else
+		ret = txcb.status;
 
-	bulkout_id = rtw_usb_get_bulkout_id(rtwdev, dma_ch);
-	pipe = rtw_usb_get_pipe(rtwdev, bulkout_id, is_write);
-
-	ret = usb_bulk_msg(usbd, pipe, (void *)skb->data, skb->len, &transfer,
-			   RTW_USB_MSG_TIMEOUT);
-	if (ret < 0)
-		rtw89_err(rtwdev, "fail to do usb_bulk_msg, ret=%d\n", ret);
-
+out:
+	usb_free_urb(urb);
 	return ret;
 }
 
@@ -640,12 +642,16 @@ static int rtw_usb_write_data_h2c(struct rtw89_dev *rtwdev, struct sk_buff *skb)
 {
 	int ret;
 
-	//print_hex_dump(KERN_INFO, "usb write h2c: ", DUMP_PREFIX_OFFSET, 16, 1,
-	//	       skb->data, skb->len, 1);
-	ret = rtw_usb_write_port_wait(rtwdev, RTW89_DMA_H2C, skb);
+	if (rtwdev->debug) {
+		pr_info("%s: pkt len=%d\n", __func__, skb->len);
+		print_hex_dump(KERN_INFO, "usb write h2c: ", DUMP_PREFIX_OFFSET,
+			       16, 1, skb->data, skb->len, 1);
+	}
+
+	ret = rtw_usb_write_port(rtwdev, RTW89_DMA_H2C, skb);
+
 	if (unlikely(ret))
-		rtw89_err(rtwdev, "failed to do USB write async, ret=%d\n",
-			  ret);
+		rtw89_err(rtwdev, "failed to do USB write port, ret=%d\n", ret);
 
 	return ret;
 }
