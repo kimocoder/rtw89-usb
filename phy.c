@@ -125,12 +125,24 @@ static void rtw89_halrf_radio_config_to_fw(struct rtw89_dev *rtwdev,
 					   enum rtw89_rf_path path)
 {
 	struct rtw89_halrf_radio_info *radio = &rtwdev->rf.radio_info;
+	u16 len;
 
 	if (path == RF_PATH_A) {
 		rtw89_halrf_send_h2c(rtwdev, (u8 *)radio->radio_a_parameter[0],
 				     512, 8, RTW89_FWCMD_H2C_RADIO_A_INIT_0);
+		rtw89_halrf_send_h2c(rtwdev, (u8 *)radio->radio_a_parameter[1],
+				     512, 8, RTW89_FWCMD_H2C_RADIO_A_INIT_1);
+		len = radio->write_times_a % 512;
+		rtw89_halrf_send_h2c(rtwdev, (u8 *)radio->radio_a_parameter[2],
+				     len, 8, RTW89_FWCMD_H2C_RADIO_A_INIT_2);
 	} else if (path == RF_PATH_B) {
-		rtw89_info(rtwdev, "TODO: %s\n", __func__);
+		rtw89_halrf_send_h2c(rtwdev, (u8 *)radio->radio_b_parameter[0],
+				     512, 8, RTW89_FWCMD_H2C_RADIO_B_INIT_0);
+		rtw89_halrf_send_h2c(rtwdev, (u8 *)radio->radio_b_parameter[1],
+				     512, 8, RTW89_FWCMD_H2C_RADIO_B_INIT_1);
+		len = radio->write_times_b % 512;
+		rtw89_halrf_send_h2c(rtwdev, (u8 *)radio->radio_b_parameter[2],
+				     len, 8, RTW89_FWCMD_H2C_RADIO_B_INIT_2);
 	} else {
 		rtw89_err(rtwdev, "fail to set radio, path:%d\n", path);
 		return;
@@ -353,13 +365,14 @@ void rtw89_phy_load_tables(struct rtw89_dev *rtwdev)
 	const struct rtw89_chip_info *chip = rtwdev->chip;
 	const struct rtw89_table *tbl;
 
-	pr_info("%s: bb_tbl\n", __func__);
-	rtw89_load_table(rtwdev, chip->bb_tbl);
+	//pr_info("%s: bb_tbl\n", __func__);
+	//rtw89_load_table(rtwdev, chip->bb_tbl);
 	pr_info("%s: phy reset \n", __func__);
 	rtw89_phy_reset(rtwdev);
 	pr_info("%s: load table radio A \n", __func__);
 	tbl = chip->rf_tbl[RF_PATH_A];
 	rtw89_load_table(rtwdev, tbl);
-	//tbl = chip->rf_tbl[RF_PATH_B];
-	//rtw89_load_table(rtwdev, tbl);
+	pr_info("%s: load table radio B \n", __func__);
+	tbl = chip->rf_tbl[RF_PATH_B];
+	rtw89_load_table(rtwdev, tbl);
 }
