@@ -59,6 +59,6 @@ const struct rtw89_chip_info rtw8852a_chip_info = {
 	.log_efuse_size = 1536,
 	.sec_ctrl_efuse_size = 4,
 	.bb_tbl = &rtw8852a_bb_tbl,
-	.rf_tbl = {&rtw8852a_rf_a_tbl},
+	.rf_tbl = {&rtw8852a_rf_a_tbl, &rtw8852a_rf_b_tbl},
 };
 EXPORT_SYMBOL(rtw8852a_chip_info);

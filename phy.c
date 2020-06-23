@@ -90,7 +90,8 @@ void rtw89_phy_cfg_rf(struct rtw89_dev *rtwdev, const struct rtw89_table *tbl,
 		rtw89_phy_write_rf(rtwdev, tbl->rf_path, addr, RTW89_RFREG_MASK,
 				   data);
 
-	pr_info("[RF][RF_a] %08X %08X\n", addr, data);
+	//if (tbl->rf_path == RF_PATH_B)
+	//	pr_info("[RF][RF_b] %08X %08X\n", addr, data);
 }
 
 static bool check_positive(struct rtw89_dev *rtwdev,
@@ -266,7 +267,6 @@ static void rtw89_phy_reset_bb(struct rtw89_dev *rtwdev)
 	rtw89_write32(rtwdev, 0x884 | RTW89_BB_OFST, 0xFF);
 }
 
-
 void rtw89_phy_load_tables(struct rtw89_dev *rtwdev)
 {
 	const struct rtw89_chip_info *chip = rtwdev->chip;
@@ -275,5 +275,7 @@ void rtw89_phy_load_tables(struct rtw89_dev *rtwdev)
 	rtw89_load_table(rtwdev, chip->bb_tbl);
 	rtw89_phy_reset_bb(rtwdev);
 	tbl = chip->rf_tbl[RF_PATH_A];
+	rtw89_load_table(rtwdev, tbl);
+	tbl = chip->rf_tbl[RF_PATH_B];
 	rtw89_load_table(rtwdev, tbl);
 }
