@@ -418,15 +418,6 @@ struct rtw89_phy_cond1 {
 	u32 pkg:8;
 	u32 rfe:8;
 #endif
-	/* for intf:4 */
-	#define INTF_PCIE	BIT(0)
-	#define INTF_USB	BIT(1)
-	#define INTF_SDIO	BIT(2)
-	/* for branch:2 */
-	#define BRANCH_IF	0
-	#define BRANCH_ELIF	1
-	#define BRANCH_ELSE	2
-	#define BRANCH_ENDIF	3
 };
 
 struct rtw89_table {
@@ -444,6 +435,19 @@ static inline void rtw89_load_table(struct rtw89_dev *rtwdev,
 	(*tbl->parse)(rtwdev, tbl);
 }
 
+struct rtw89_halrf_radio_info {
+#define RADIO_TO_FW_PAGE_SIZE	3
+#define RADIO_TO_FW_DATA_SIZE	512
+	u32 write_times_a;
+	u32 write_times_b;
+	u32 radio_a_parameter[RADIO_TO_FW_PAGE_SIZE][RADIO_TO_FW_DATA_SIZE];
+	u32 radio_b_parameter[RADIO_TO_FW_PAGE_SIZE][RADIO_TO_FW_DATA_SIZE];
+};
+
+struct rtw89_rf_info {
+	struct rtw89_halrf_radio_info radio_info;
+};
+
 struct rtw89_dev {
 	struct ieee80211_hw *hw;
 	struct device *dev;
@@ -453,12 +457,14 @@ struct rtw89_dev {
 	struct rtw89_fw_info fw;
 	struct rtw89_efuse efuse;
 	struct rtw89_hci_info hci;
+	struct rtw89_rf_info rf;
 
 	/* used to protect txqs list */
 	spinlock_t txq_lock;
 	struct list_head txqs;
 	struct tasklet_struct txq_tasklet;
 
+	bool debug;
 	/* HCI related data, keep last */
 	u8 priv[0] __aligned(sizeof(void *));
 };

@@ -4,11 +4,12 @@
 
 #include "core.h"
 #include "debug.h"
-#include "mac.h"
 #include "reg.h"
 #include "fw.h"
 #include "pci.h"
 #include "efuse.h"
+#include "txrx.h"
+#include "mac.h"
 
 int rtw89_mac_check_mac_en(struct rtw89_dev *rtwdev, u8 band,
 			   enum rtw89_mac_hwmod_sel sel)
@@ -2606,6 +2607,57 @@ int rtw89_mac_init(struct rtw89_dev *rtwdev)
 			return ret;
 	}
 	rtwdev->hci.ops->reset(rtwdev);
+
+	return ret;
+}
+
+
+int rtw89_mac_send_h2c(struct rtw89_dev *rtwdev, const u8 *h2c_pkt, u32 len,
+		       u8 cat, u8 cl, u8 func)
+{
+	struct rtw89_fw_info *fw_info = &rtwdev->fw;
+	struct rtw89_fw_cmd_hdr *fc_hdr;
+	struct rtw89_txdesc_wd_body *wd_body;
+	struct sk_buff *skb;
+	int headsize = RTW89_FWCMD_HDR_LEN + RTW89_TX_WD_BODY_LEN;
+	int ret = 0;
+
+	if (rtwdev->debug)
+		pr_info("%s H2C: %x %x %x\n", __func__, cl, func, len);
+
+	skb = dev_alloc_skb(len + headsize);
+	if (unlikely(!skb))
+		return -ENOMEM;
+
+	skb_reserve(skb, headsize);
+	skb_put_data(skb, h2c_pkt, len);
+
+	/* FWCMD HDR */
+	skb_push(skb, RTW89_FWCMD_HDR_LEN);
+	memset(skb->data, 0, RTW89_FWCMD_HDR_LEN);
+	fc_hdr = (struct rtw89_fw_cmd_hdr *)skb->data;
+	fc_hdr->del_type = RTW89_FWCMD_TYPE_H2C;
+	fc_hdr->cat = cat;
+	fc_hdr->cl = cl;
+	fc_hdr->func = func;
+	fc_hdr->h2c_seq = fw_info->h2c_seq;
+	fc_hdr->len = len + RTW89_FWCMD_HDR_LEN;
+
+	/* TXDESC */
+	skb_push(skb, RTW89_TX_WD_BODY_LEN);
+	memset(skb->data, 0, RTW89_TX_WD_BODY_LEN);
+	wd_body = (struct rtw89_txdesc_wd_body *)skb->data;
+	wd_body->ch_dma = RTW89_DMA_H2C;
+	wd_body->txpktsize = len + RTW89_FWCMD_HDR_LEN;
+
+	ret = rtw89_hci_write_data_h2c(rtwdev, skb);
+	if (unlikely(ret))
+		goto err_free_skb;
+
+	return ret;
+
+err_free_skb:
+	dev_kfree_skb(skb);
 
 	return ret;
 }

@@ -7,8 +7,9 @@
 #include "core.h"
 #include "reg.h"
 #include "fw.h"
-#include "phy.h"
 #include "debug.h"
+#include "mac.h"
+#include "phy.h"
 
 #define RTW89_DONT_CARE_8852A 0xFF
 #define RTW89_RFREG_MASK 0xFFFFF
@@ -27,6 +28,20 @@ union rtw89_phy_table_tile1 {
 	struct rtw89_phy_cond1 cond;
 	struct rtw89_phy_cfg_pair cfg;
 };
+
+int rtw89_halrf_send_h2c(struct rtw89_dev *rtwdev,
+			  u8 *buf, u16 len, u8 cl, u8 func)
+{
+	int ret;
+
+	ret = rtw89_mac_send_h2c(rtwdev, buf, len,
+				 RTW89_FWCMD_H2C_CAT_OUTSRC,
+				 cl, func);
+	if (ret)
+		rtw89_err(rtwdev, "fail to send h2c\n");
+
+	return ret;
+}
 
 void rtw89_phy_cfg_bb(struct rtw89_dev *rtwdev, const struct rtw89_table *tbl,
 		      u32 addr, u32 data)
@@ -71,6 +86,34 @@ static bool rtw89_phy_write_rf(struct rtw89_dev *rtwdev,
 	return true;
 }
 
+static void rtw89_halrf_radio_store_reg(struct rtw89_dev *rtwdev,
+					enum rtw89_rf_path path,
+					u32 addr, u32 data)
+{
+	struct rtw89_halrf_radio_info *radio = &rtwdev->rf.radio_info;
+	u32 page, idx, val32;
+
+	val32 = cpu_to_le32((addr << 20) | data);
+	switch (path) {
+	case RF_PATH_A:
+		page = radio->write_times_a / 512;
+		idx = radio->write_times_a % 512;
+		radio->radio_a_parameter[page][idx] = val32;
+		radio->write_times_a++;
+		break;
+	case RF_PATH_B:
+		page = radio->write_times_b / 512;
+		idx = radio->write_times_b % 512;
+		radio->radio_b_parameter[page][idx] = val32;
+		radio->write_times_b++;
+		break;
+	case RF_PATH_C:
+	case RF_PATH_D:
+	default:
+		break;
+	}
+}
+
 void rtw89_phy_cfg_rf(struct rtw89_dev *rtwdev, const struct rtw89_table *tbl,
 		      u32 addr, u32 data)
 {
@@ -86,9 +129,11 @@ void rtw89_phy_cfg_rf(struct rtw89_dev *rtwdev, const struct rtw89_table *tbl,
 		udelay(5);
 	else if (addr == 0xf9)
 		udelay(1);
-	else
+	else {
 		rtw89_phy_write_rf(rtwdev, tbl->rf_path, addr, RTW89_RFREG_MASK,
 				   data);
+		rtw89_halrf_radio_store_reg(rtwdev, tbl->rf_path, addr, data);
+	}
 
 	//if (tbl->rf_path == RF_PATH_B)
 	//	pr_info("[RF][RF_b] %08X %08X\n", addr, data);
@@ -115,16 +160,31 @@ static bool check_positive(struct rtw89_dev *rtwdev,
 	return true;
 }
 
+
 void rtw89_parse_tbl_phy_cond1(struct rtw89_dev *rtwdev,
 			    const struct rtw89_table *tbl)
 {
 	const union rtw89_phy_table_tile1 *p = tbl->data;
 	const union rtw89_phy_table_tile1 *end = p + tbl->size / 2;
 	struct rtw89_phy_cond1 pos_cond = {0};
+	struct rtw89_halrf_radio_info *radio = &rtwdev->rf.radio_info;
 	bool is_matched = true, is_skipped = false;
 
 	BUILD_BUG_ON(sizeof(union rtw89_phy_table_tile1) !=
 		     sizeof(struct rtw89_phy_cfg_pair));
+
+	switch (tbl->rf_path) {
+	case RF_PATH_A:
+		radio->write_times_a = 0;
+		break;
+	case RF_PATH_B:
+		radio->write_times_b = 0;
+		break;
+	case RF_PATH_C:
+	case RF_PATH_D:
+	default:
+		break;
+	}
 
 	for (; p < end; p++) {
 		if (p->cond.pos) {
@@ -151,14 +211,10 @@ void rtw89_parse_tbl_phy_cond1(struct rtw89_dev *rtwdev,
 					is_matched = false;
 					is_skipped = false;
 				}
-			} else {
+			} else
 				is_matched = false;
-			}
-		} else if (is_matched) {
-			(*tbl->do_cfg)(rtwdev, tbl, p->cfg.addr,
-				       p->cfg.data);
-			//halrf_config_8852a_store_radio_a_reg()
-		}
+		} else if (is_matched)
+			(*tbl->do_cfg)(rtwdev, tbl, p->cfg.addr, p->cfg.data);
 	}
 	//halrf_config_8852a_write_radio_a_reg_to_fw()
 }
