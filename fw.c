@@ -351,10 +351,15 @@ int rtw89_fwdl_pre_init(struct rtw89_dev *rtwdev, enum rtw89_qta_mode mode)
 
 	ret = rtw89_mac_dle_init(rtwdev, RTW89_QTA_DLFW, mode);
 	if (ret) {
-		rtw89_err(rtwdev, "fail to DLE pre init %d\n", ret);
+		rtw89_err(rtwdev, "fail to DLE init %d\n", ret);
 		return ret;
 	}
 
+	ret = rtw89_mac_hfc_init(rtwdev, 1, 0, 1);
+	if (ret) {
+		rtw89_err(rtwdev, "fail to HFC init %d\n", ret);
+		return ret;
+	}
 
 	return ret;
 }

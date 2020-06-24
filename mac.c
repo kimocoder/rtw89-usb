@@ -580,7 +580,8 @@ static void hfc_func_en(struct rtw89_dev *rtwdev, bool en, bool h2c_en)
 	rtw89_write32(rtwdev, R_AX_HCI_FC_CTRL, val);
 }
 
-static int hfc_init(struct rtw89_dev *rtwdev, bool reset, bool en, bool h2c_en)
+int rtw89_mac_hfc_init(struct rtw89_dev *rtwdev, bool reset, bool en,
+		       bool h2c_en)
 {
 	u8 ch;
 	u32 ret = 0;
@@ -1792,7 +1793,6 @@ static int dmac_init(struct rtw89_dev *rtwdev, u8 band)
 		rtw89_err(rtwdev, "[ERR]DLE init %d\n", ret);
 		return ret;
 	}
-#endif
 
 	pr_info("%s: hfc_init\n", __func__);
 	ret = hfc_init(rtwdev, true, true, true);
@@ -1800,6 +1800,7 @@ static int dmac_init(struct rtw89_dev *rtwdev, u8 band)
 		rtw89_err(rtwdev, "[ERR]HCI FC init %d\n", ret);
 		return ret;
 	}
+#endif
 
 	pr_info("%s: sta_sch_init\n", __func__);
 	ret = sta_sch_init(rtwdev);
