@@ -54,20 +54,20 @@ void rtw89_phy_cfg_bb(struct rtw89_dev *rtwdev, const struct rtw89_table *tbl,
 		      u32 addr, u32 data)
 {
 	if (addr == 0xfe)
-		msleep(50);
+		mdelay(50);
 	else if (addr == 0xfd)
 		mdelay(5);
 	else if (addr == 0xfc)
 		mdelay(1);
 	else if (addr == 0xfb)
-		usleep_range(50, 60);
+		udelay(50);
 	else if (addr == 0xfa)
 		udelay(5);
 	else if (addr == 0xf9)
 		udelay(1);
 	else {
-		//pr_info("[BB][REG][0]0x%04X = 0x%08X\n", addr, data);
-		rtw89_write32(rtwdev, addr | RTW89_BB_OFST, data);
+		pr_info("[BB][REG][0]0x%04X = 0x%08X\n", addr, data);
+		//rtw89_write32(rtwdev, addr | RTW89_BB_OFST, data);
 	}
 }
 
@@ -155,13 +155,13 @@ void rtw89_phy_cfg_rf(struct rtw89_dev *rtwdev, const struct rtw89_table *tbl,
 		      u32 addr, u32 data)
 {
 	if (addr == 0xfe)
-		msleep(50);
+		mdelay(50);
 	else if (addr == 0xfd)
 		mdelay(5);
 	else if (addr == 0xfc)
 		mdelay(1);
 	else if (addr == 0xfb)
-		usleep_range(50, 60);
+		udelay(50);
 	else if (addr == 0xfa)
 		udelay(5);
 	else if (addr == 0xf9)
@@ -351,13 +351,13 @@ void rtw89_parse_tbl_phy_cond(struct rtw89_dev *rtwdev,
 static void rtw89_phy_reset(struct rtw89_dev *rtwdev)
 {
 	/* PHY 0 */
-	rtw89_write32(rtwdev, 0x804 | RTW89_BB_OFST, 0xFF);
-	rtw89_write32(rtwdev, 0x804 | RTW89_BB_OFST, 0x0);
-	rtw89_write32(rtwdev, 0x804 | RTW89_BB_OFST, 0xFF);
+	rtw89_write32_set(rtwdev, 0x804 | RTW89_BB_OFST, 0xFF);
+	rtw89_write32_clr(rtwdev, 0x804 | RTW89_BB_OFST, 0xFF);
+	rtw89_write32_set(rtwdev, 0x804 | RTW89_BB_OFST, 0xFF);
 	/* PHY 1 */
-	rtw89_write32(rtwdev, 0x884 | RTW89_BB_OFST, 0xFF);
-	rtw89_write32(rtwdev, 0x884 | RTW89_BB_OFST, 0x0);
-	rtw89_write32(rtwdev, 0x884 | RTW89_BB_OFST, 0xFF);
+	rtw89_write32_set(rtwdev, 0x884 | RTW89_BB_OFST, 0xFF);
+	rtw89_write32_clr(rtwdev, 0x884 | RTW89_BB_OFST, 0xFF);
+	rtw89_write32_set(rtwdev, 0x884 | RTW89_BB_OFST, 0xFF);
 }
 
 void rtw89_phy_load_tables(struct rtw89_dev *rtwdev)
@@ -365,10 +365,12 @@ void rtw89_phy_load_tables(struct rtw89_dev *rtwdev)
 	const struct rtw89_chip_info *chip = rtwdev->chip;
 	const struct rtw89_table *tbl;
 
-	//pr_info("%s: bb_tbl\n", __func__);
-	//rtw89_load_table(rtwdev, chip->bb_tbl);
+	pr_info("%s: bb_tbl, in_interrupt:%lu\n", __func__, in_interrupt());
+	rtw89_load_table(rtwdev, chip->bb_tbl);
+
 	pr_info("%s: phy reset \n", __func__);
 	rtw89_phy_reset(rtwdev);
+
 	pr_info("%s: load table radio A \n", __func__);
 	tbl = chip->rf_tbl[RF_PATH_A];
 	rtw89_load_table(rtwdev, tbl);

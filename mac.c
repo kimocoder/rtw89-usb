@@ -2668,28 +2668,28 @@ int rtw89_mac_init(struct rtw89_dev *rtwdev)
 	if (ret)
 		return ret;
 
-	pr_info("usb init\n");
 	if (rtwdev->hci.ops->mac_init) {
 		ret = rtwdev->hci.ops->mac_init(rtwdev);
 		if (ret)
 			return ret;
 	}
 
-	pr_info("%s: stop here first\n", __func__);
-	return -EINVAL;
-
-	rtwdev->chip->ops->phy_set_param(rtwdev);
-
 	ret = rtw89_efuse_process(rtwdev);
 	if (ret)
 		return ret;
+
+	reset_bb_rf(rtwdev);
+
+	rtwdev->chip->ops->phy_set_param(rtwdev);
+
+	pr_info("%s: stop here first\n", __func__);
+	return -EINVAL;
 
 	if (rtwdev->hci.ops->mac_post_init) {
 		ret = rtwdev->hci.ops->mac_post_init(rtwdev);
 		if (ret)
 			return ret;
 	}
-	rtwdev->hci.ops->reset(rtwdev);
 
 	return ret;
 }
