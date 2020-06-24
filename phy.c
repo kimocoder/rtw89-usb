@@ -376,3 +376,4 @@ void rtw89_phy_load_tables(struct rtw89_dev *rtwdev)
 	tbl = chip->rf_tbl[RF_PATH_B];
 	rtw89_load_table(rtwdev, tbl);
 }
+

@@ -931,6 +931,45 @@ static int rtw89_usb_ops_mac_pre_init(struct rtw89_dev *rtwdev)
 	return 0;
 }
 
+#define USB3_BULKSIZE 0x0
+#define USB2_BULKSIZE 0x1
+#define USB11_BULKSIZE 0x2
+static int rtw89_usb_ops_mac_init(struct rtw89_dev *rtwdev)
+{
+	struct rtw_usb *rtwusb = rtw_get_usb_priv(rtwdev);
+	u32 val32 = 0;
+	u32 hs = 0;
+
+	val32 = rtw89_read32(rtwdev, R_AX_USB_STATUS) & B_AX_R_USB2_SEL;
+	hs = rtw89_read32(rtwdev, R_AX_USB_STATUS) & B_AX_MODE_HS;
+	if (val32 == B_AX_R_USB2_SEL)
+		rtwusb->usb_speed = RTW_USB_SPEED_3;
+	else if ((val32 != B_AX_R_USB2_SEL) && (hs == B_AX_MODE_HS))
+		rtwusb->usb_speed = RTW_USB_SPEED_2;
+	else
+		rtwusb->usb_speed = RTW_USB_SPEED_1_1;
+
+	switch (rtwusb->usb_speed) {
+	case RTW_USB_SPEED_3:
+		rtw89_info(rtwdev, "usb init: USB3\n");
+		rtw89_write8(rtwdev, R_AX_RXDMA_SETTING, USB3_BULKSIZE);
+		break;
+	case RTW_USB_SPEED_2:
+		rtw89_info(rtwdev, "usb init: USB2\n");
+		rtw89_write8(rtwdev, R_AX_RXDMA_SETTING, USB2_BULKSIZE);
+		break;
+	case RTW_USB_SPEED_1_1:
+		rtw89_info(rtwdev, "usb init: USB11\n");
+		rtw89_write8(rtwdev, R_AX_RXDMA_SETTING, USB11_BULKSIZE);
+		break;
+	default:
+		rtw89_err(rtwdev, "fail at usb_speed: %d\n", rtwusb->usb_speed);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int rtw89_usb_ops_mac_post_init(struct rtw89_dev *rtwdev)
 {
 	pr_info("TODO: %s ====>\n", __func__);
@@ -950,6 +989,7 @@ static struct rtw89_hci_ops rtw89_usb_ops = {
 	.write32 = rtw_usb_write32,
 
 	.mac_pre_init = rtw89_usb_ops_mac_pre_init,
+	.mac_init = rtw89_usb_ops_mac_init,
 	.mac_post_init = rtw89_usb_ops_mac_post_init,
 
 	.write_data_h2c = rtw_usb_write_data_h2c,

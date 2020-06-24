@@ -966,7 +966,7 @@ static int dmac_func_en(struct rtw89_dev *rtwdev)
 	return ret;
 }
 
-static int rtw89_mac_sys_init(struct rtw89_dev *rtwdev)
+static int mac_sys_init(struct rtw89_dev *rtwdev)
 {
 	int ret;
 
@@ -1786,21 +1786,20 @@ static int dmac_init(struct rtw89_dev *rtwdev, u8 band)
 {
 	int ret;
 
-#if 0
 	pr_info("%s: dle_init\n", __func__);
-	ret = dle_init(rtwdev, rtwdev->mac.dle_info.qta_mode);
+	ret = rtw89_mac_dle_init(rtwdev, rtwdev->mac.dle_info.qta_mode,
+		       RTW89_QTA_INVALID);
 	if (ret) {
 		rtw89_err(rtwdev, "[ERR]DLE init %d\n", ret);
 		return ret;
 	}
 
 	pr_info("%s: hfc_init\n", __func__);
-	ret = hfc_init(rtwdev, true, true, true);
+	ret = rtw89_mac_hfc_init(rtwdev, true, true, true);
 	if (ret) {
 		rtw89_err(rtwdev, "[ERR]HCI FC init %d\n", ret);
 		return ret;
 	}
-#endif
 
 	pr_info("%s: sta_sch_init\n", __func__);
 	ret = sta_sch_init(rtwdev);
@@ -2059,6 +2058,17 @@ static int cmac_com_init(struct rtw89_dev *rtwdev, u8 band)
 	return 0;
 }
 
+static int ptcl_init(struct rtw89_dev *rtwdev, u8 band)
+{
+	int ret;
+
+	ret = rtw89_mac_check_mac_en(rtwdev, band, RTW89_CMAC_SEL);
+	if (ret)
+		rtw89_err(rtwdev, "fail to check mac en: CMAC\n");
+
+	return ret;
+}
+
 static int cmac_init(struct rtw89_dev *rtwdev, u8 band)
 {
 	int ret;
@@ -2109,6 +2119,13 @@ static int cmac_init(struct rtw89_dev *rtwdev, u8 band)
 	ret = cmac_com_init(rtwdev, band);
 	if (ret) {
 		rtw89_err(rtwdev, "[ERR]CMAC%d Com init %d\n", band, ret);
+		return ret;
+	}
+
+	ret = ptcl_init(rtwdev, band);
+	if (ret) {
+		rtw89_err(rtwdev, "fail to ptcl init band %d, ret %d\n",
+			  band, ret);
 		return ret;
 	}
 
@@ -2572,6 +2589,40 @@ static int rtw89_mac_enable_cpu(struct rtw89_dev *rtwdev, u8 boot_reason,
 	return 0;
 }
 
+static void enable_bb_rf(struct rtw89_dev *rtwdev, bool enable)
+{
+	if (enable) {
+		rtw89_write8_set(rtwdev, R_AX_SYS_FUNC_EN,
+				 B_AX_FEN_BBRSTB | B_AX_FEN_BB_GLB_RSTN);
+
+		rtw89_write32_set(rtwdev, R_AX_WLRF_CTRL,
+				  B_AX_WLRF1_CTRL_7 | B_AX_WLRF1_CTRL_1 |
+				  B_AX_WLRF_CTRL_7 | B_AX_WLRF_CTRL_1);
+
+		rtw89_write8_set(rtwdev, R_AX_PHYREG_SET,
+				 B_AX_PHYREG_SET_ALL_CYCLE);
+	} else {
+		rtw89_write8_clr(rtwdev, R_AX_SYS_FUNC_EN,
+				 B_AX_FEN_BBRSTB | B_AX_FEN_BB_GLB_RSTN);
+
+		rtw89_write32_clr(rtwdev, R_AX_WLRF_CTRL,
+				  B_AX_WLRF1_CTRL_7 | B_AX_WLRF1_CTRL_1 |
+				  B_AX_WLRF_CTRL_7 | B_AX_WLRF_CTRL_1);
+
+		rtw89_write8_clr(rtwdev, R_AX_PHYREG_SET,
+				 B_AX_PHYREG_SET_ALL_CYCLE);
+	}
+}
+
+static void reset_bb_rf(struct rtw89_dev *rtwdev)
+{
+	bool enable = true;
+	bool disable = false;
+
+	enable_bb_rf(rtwdev, disable);
+	enable_bb_rf(rtwdev, enable);
+}
+
 int rtw89_mac_init(struct rtw89_dev *rtwdev)
 {
 	int ret;
@@ -2595,18 +2646,7 @@ int rtw89_mac_init(struct rtw89_dev *rtwdev)
 	if (ret)
 		return ret;
 
-	pr_info("%s: stop here first\n", __func__);
-	return -EINVAL;
-
 	ret = rtw89_mac_enable_cpu(rtwdev, 0, true);
-	if (ret)
-		return ret;
-
-	ret = rtw89_mac_sys_init(rtwdev);
-	if (ret)
-		return ret;
-
-	ret = rtw89_mac_trx_init(rtwdev);
 	if (ret)
 		return ret;
 
@@ -2618,13 +2658,31 @@ int rtw89_mac_init(struct rtw89_dev *rtwdev)
 	if (ret)
 		return ret; 
 
-	ret = rtw89_efuse_process(rtwdev);
+	reset_bb_rf(rtwdev);
+
+	ret = mac_sys_init(rtwdev);
+	if (ret)
+		return ret; 
+
+	ret = rtw89_mac_trx_init(rtwdev);
 	if (ret)
 		return ret;
 
-	pr_info("reset bb\n");
+	pr_info("usb init\n");
+	if (rtwdev->hci.ops->mac_init) {
+		ret = rtwdev->hci.ops->mac_init(rtwdev);
+		if (ret)
+			return ret;
+	}
+
+	pr_info("%s: stop here first\n", __func__);
+	return -EINVAL;
+
 	rtwdev->chip->ops->phy_set_param(rtwdev);
 
+	ret = rtw89_efuse_process(rtwdev);
+	if (ret)
+		return ret;
 
 	if (rtwdev->hci.ops->mac_post_init) {
 		ret = rtwdev->hci.ops->mac_post_init(rtwdev);

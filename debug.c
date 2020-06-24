@@ -199,17 +199,21 @@ rtw89_debug_priv_mac_mem_dump_select(struct file *filp,
 				     const char __user *user_buf,
 				     size_t count, loff_t *loff)
 {
+#if 0
 	struct seq_file *m = (struct seq_file *)filp->private_data;
 	struct rtw89_debugfs_priv *debugfs_priv = m->private;
 	struct rtw89_dev *rtwdev = debugfs_priv->rtwdev;
+#endif
 	return count;
 }
 
 static int
 rtw89_debug_priv_mac_mem_dump_get(struct seq_file *m, void *v)
 {
+#if 0
 	struct rtw89_debugfs_priv *debugfs_priv = m->private;
 	struct rtw89_dev *rtwdev = debugfs_priv->rtwdev;
+#endif
 	return 0;
 }
 
