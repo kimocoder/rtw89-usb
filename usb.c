@@ -7,6 +7,7 @@
 #include <linux/mutex.h>
 #include "core.h"
 #include "debug.h"
+#include "reg.h"
 #include "usb.h"
 
 #define RTW_USB_MSG_TIMEOUT	300 /* (ms) */
@@ -922,7 +923,10 @@ static void rtw89_usb_ops_reset(struct rtw89_dev *rtwdev)
 
 static int rtw89_usb_ops_mac_pre_init(struct rtw89_dev *rtwdev)
 {
-	pr_info("TODO: %s ====>\n", __func__);
+	u32 val32;
+
+	val32 = BIT(16) | BIT(17) | BIT(18);
+	rtw89_write32_set(rtwdev, R_AX_USB_BT_BRIDGE, val32);
 
 	return 0;
 }
