@@ -929,6 +929,14 @@ static int rst_bdram_pcie(struct rtw89_dev *rtwdev, u8 val)
 	return 0;
 }
 
+static void hci_func_en(struct rtw89_dev *rtwdev)
+{
+	u32 val32;
+
+	val32 = (B_AX_HCI_TXDMA_EN | B_AX_HCI_RXDMA_EN);
+	rtw89_write32_set(rtwdev, R_AX_HCI_FUNC_EN, val32);
+}
+
 static int dmac_func_en(struct rtw89_dev *rtwdev)
 {
 	u32 val32;
@@ -939,9 +947,6 @@ static int dmac_func_en(struct rtw89_dev *rtwdev)
 		 B_AX_DMAC_TBL_EN | B_AX_PKT_BUF_EN | B_AX_STA_SCH_EN |
 		 B_AX_TXPKT_CTRL_EN | B_AX_WD_RLS_EN | B_AX_MPDU_PROC_EN);
 	rtw89_write32(rtwdev, R_AX_DMAC_FUNC_EN, val32);
-
-	val32 = (B_AX_HCI_TXDMA_EN | B_AX_HCI_RXDMA_EN);
-	rtw89_write32(rtwdev, R_AX_HCI_FUNC_EN, val32);
 
 	val32 = (B_AX_MAC_SEC_CLK_EN | B_AX_DISPATCHER_CLK_EN |
 		 B_AX_DLE_CPUIO_CLK_EN | B_AX_PKT_IN_CLK_EN |
@@ -2565,15 +2570,17 @@ int rtw89_mac_init(struct rtw89_dev *rtwdev)
 			return ret;
 	}
 
-	ret = rtw89_mac_enable_cpu(rtwdev, 0, true);
-	if (ret)
-		return ret;
-
+	hci_func_en(rtwdev);
 	if (rtwdev->hci.ops->mac_pre_init) {
 		ret = rtwdev->hci.ops->mac_pre_init(rtwdev);
 		if (ret)
 			return ret;
 	}
+
+	ret = rtw89_mac_enable_cpu(rtwdev, 0, true);
+	if (ret)
+		return ret;
+
 
 	ret = rtw89_mac_sys_init(rtwdev);
 	if (ret)
