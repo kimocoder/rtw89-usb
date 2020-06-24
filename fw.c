@@ -339,3 +339,23 @@ int rtw89_fw_request(struct rtw89_dev *rtwdev)
 	return 0;
 }
 
+int rtw89_fwdl_pre_init(struct rtw89_dev *rtwdev, enum rtw89_qta_mode mode)
+{
+	u32 val32;
+	int ret;
+
+	val32 = B_AX_MAC_FUNC_EN | B_AX_DMAC_FUNC_EN | B_AX_DISPATCHER_EN |
+		B_AX_PKT_BUF_EN;
+	rtw89_write32(rtwdev, R_AX_DMAC_FUNC_EN, val32);
+	rtw89_write32(rtwdev, R_AX_DMAC_CLK_EN, B_AX_DISPATCHER_CLK_EN);
+
+	ret = rtw89_mac_dle_init(rtwdev, RTW89_QTA_DLFW, mode);
+	if (ret) {
+		rtw89_err(rtwdev, "fail to DLE pre init %d\n", ret);
+		return ret;
+	}
+
+
+	return ret;
+}
+

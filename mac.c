@@ -1468,16 +1468,16 @@ static struct rtw89_dle_mem *get_dle_mem_cfg(struct rtw89_dev *rtwdev,
 		return NULL;
 	}
 
-	if (cfg->mode != mode) {
-		rtw89_warn(rtwdev, "qta mode unmatch!\n");
-		return NULL;
+	for (; cfg->mode != RTW89_QTA_INVALID; cfg++) {
+		if (cfg->mode == mode) {
+			mac->dle_info.wde_pg_size = cfg->wde_size->pge_size;
+			mac->dle_info.ple_pg_size = cfg->ple_size->pge_size;
+			mac->dle_info.qta_mode = mode;
+			return cfg;
+		}
 	}
 
-	mac->dle_info.wde_pg_size = cfg->wde_size->pge_size;
-	mac->dle_info.ple_pg_size = cfg->ple_size->pge_size;
-	mac->dle_info.qta_mode = mode;
-
-	return cfg;
+	return NULL;
 }
 
 static inline u32 dle_used_size(struct rtw89_dle_size *wde,
@@ -1624,9 +1624,10 @@ static void dle_quota_cfg(struct rtw89_dev *rtwdev, struct rtw89_dle_mem *cfg)
 	ple_quota_cfg(rtwdev, cfg->ple_min_qt, cfg->ple_max_qt);
 }
 
-static int dle_init(struct rtw89_dev *rtwdev, enum rtw89_qta_mode mode)
+int rtw89_mac_dle_init(struct rtw89_dev *rtwdev, enum rtw89_qta_mode mode,
+		       enum rtw89_qta_mode ext_mode)
 {
-	struct rtw89_dle_mem *cfg;
+	struct rtw89_dle_mem *cfg, *ext_cfg;
 	int ret = 0;
 	u32 cnt;
 
@@ -1639,6 +1640,16 @@ static int dle_init(struct rtw89_dev *rtwdev, enum rtw89_qta_mode mode)
 		rtw89_err(rtwdev, "[ERR]get_dle_mem_cfg\n");
 		ret = -EINVAL;
 		goto error;
+	}
+
+	if (mode == RTW89_QTA_DLFW) {
+		ext_cfg = get_dle_mem_cfg(rtwdev, ext_mode);
+		if (!ext_cfg) {
+			rtw89_err(rtwdev, "[ERR]get_dle_mem_cfg ext\n");
+			ret = -EINVAL;
+			goto error;
+		}
+		cfg->wde_min_qt->wcpu = ext_cfg->wde_min_qt->wcpu;
 	}
 
 	if (dle_used_size(cfg->wde_size, cfg->ple_size) !=
@@ -1774,12 +1785,14 @@ static int dmac_init(struct rtw89_dev *rtwdev, u8 band)
 {
 	int ret;
 
+#if 0
 	pr_info("%s: dle_init\n", __func__);
 	ret = dle_init(rtwdev, rtwdev->mac.dle_info.qta_mode);
 	if (ret) {
 		rtw89_err(rtwdev, "[ERR]DLE init %d\n", ret);
 		return ret;
 	}
+#endif
 
 	pr_info("%s: hfc_init\n", __func__);
 	ret = hfc_init(rtwdev, true, true, true);
@@ -2577,10 +2590,16 @@ int rtw89_mac_init(struct rtw89_dev *rtwdev)
 			return ret;
 	}
 
-	ret = rtw89_mac_enable_cpu(rtwdev, 0, true);
+	ret = rtw89_fwdl_pre_init(rtwdev, rtwdev->mac.dle_info.qta_mode);
 	if (ret)
 		return ret;
 
+	pr_info("%s: stop here first\n", __func__);
+	return -EINVAL;
+
+	ret = rtw89_mac_enable_cpu(rtwdev, 0, true);
+	if (ret)
+		return ret;
 
 	ret = rtw89_mac_sys_init(rtwdev);
 	if (ret)
@@ -2605,8 +2624,6 @@ int rtw89_mac_init(struct rtw89_dev *rtwdev)
 	pr_info("reset bb\n");
 	rtwdev->chip->ops->phy_set_param(rtwdev);
 
-	pr_info("%s: stop here first\n", __func__);
-	return -EINVAL;
 
 	if (rtwdev->hci.ops->mac_post_init) {
 		ret = rtwdev->hci.ops->mac_post_init(rtwdev);

@@ -323,4 +323,8 @@ int rtw89_mac_check_mac_en(struct rtw89_dev *rtwdev, u8 band,
 
 int rtw89_mac_send_h2c(struct rtw89_dev *rtwdev, const u8 *h2c_pkt, u32 len,
 		       u8 cat, u8 cl, u8 func, bool is_fwdl);
+
+int rtw89_mac_dle_init(struct rtw89_dev *rtwdev, enum rtw89_qta_mode mode,
+		       enum rtw89_qta_mode ext_mode);
+
 #endif
