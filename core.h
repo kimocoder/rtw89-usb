@@ -249,6 +249,13 @@ struct rtw89_hci_ops {
 	void (*write16)(struct rtw89_dev *rtwdev, u32 addr, u16 data);
 	void (*write32)(struct rtw89_dev *rtwdev, u32 addr, u32 data);
 
+	u8 (*read8_atomic)(struct rtw89_dev *rtwdev, u32 addr);
+	u16 (*read16_atomic)(struct rtw89_dev *rtwdev, u32 addr);
+	u32 (*read32_atomic)(struct rtw89_dev *rtwdev, u32 addr);
+	void (*write8_atomic)(struct rtw89_dev *rtwdev, u32 addr, u8 val);
+	void (*write16_atomic)(struct rtw89_dev *rtwdev, u32 addr, u16 val);
+	void (*write32_atomic)(struct rtw89_dev *rtwdev, u32 addr, u32 val);
+
 	int (*mac_pre_init)(struct rtw89_dev *rtwdev);
 	int (*mac_init)(struct rtw89_dev *rtwdev);
 	int (*mac_post_init)(struct rtw89_dev *rtwdev);
@@ -554,6 +561,21 @@ static inline u32 rtw89_read32(struct rtw89_dev *rtwdev, u32 addr)
 	return rtwdev->hci.ops->read32(rtwdev, addr);
 }
 
+static inline u8 rtw89_read8_atomic(struct rtw89_dev *rtwdev, u32 addr)
+{
+	return rtwdev->hci.ops->read8_atomic(rtwdev, addr);
+}
+
+static inline u16 rtw89_read16_atomic(struct rtw89_dev *rtwdev, u32 addr)
+{
+	return rtwdev->hci.ops->read32_atomic(rtwdev, addr);
+}
+
+static inline u32 rtw89_read32_atomic(struct rtw89_dev *rtwdev, u32 addr)
+{
+	return rtwdev->hci.ops->read32_atomic(rtwdev, addr);
+}
+
 static inline void rtw89_write8(struct rtw89_dev *rtwdev, u32 addr, u8 data)
 {
 	rtwdev->hci.ops->write8(rtwdev, addr, data);
@@ -568,6 +590,25 @@ static inline void rtw89_write32(struct rtw89_dev *rtwdev, u32 addr, u32 data)
 {
 	rtwdev->hci.ops->write32(rtwdev, addr, data);
 }
+
+static inline
+void rtw89_write8_atomic(struct rtw89_dev *rtwdev, u32 addr, u8 val)
+{
+	rtwdev->hci.ops->write8_atomic(rtwdev, addr, val);
+}
+
+static inline
+void rtw89_write16_atomic(struct rtw89_dev *rtwdev, u32 addr, u16 val)
+{
+	rtwdev->hci.ops->write16_atomic(rtwdev, addr, val);
+}
+
+static inline
+void rtw89_write32_atomic(struct rtw89_dev *rtwdev, u32 addr, u32 val)
+{
+	rtwdev->hci.ops->write32_atomic(rtwdev, addr, val);
+}
+
 
 static inline void
 rtw89_write8_set(struct rtw89_dev *rtwdev, u32 addr, u8 bit)

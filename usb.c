@@ -1196,6 +1196,13 @@ static struct rtw89_hci_ops rtw89_usb_ops = {
 	.write16 = rtw_usb_write16,
 	.write32 = rtw_usb_write32,
 
+	.read8_atomic = rtw_usb_read8_atomic,
+	.read16_atomic = rtw_usb_read16_atomic,
+	.read32_atomic = rtw_usb_read32_atomic,
+	.write8_atomic = rtw_usb_write8_atomic,
+	.write16_atomic = rtw_usb_write16_atomic,
+	.write32_atomic = rtw_usb_write32_atomic,
+
 	.mac_pre_init = rtw89_usb_ops_mac_pre_init,
 	.mac_init = rtw89_usb_ops_mac_init,
 	.mac_post_init = rtw89_usb_ops_mac_post_init,
