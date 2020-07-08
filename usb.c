@@ -362,16 +362,20 @@ static int rtw_usb_parse(struct rtw89_dev *rtwdev,
 		num = usb_endpoint_num(endpoint);
 		xtype = usb_endpoint_type(endpoint);
 
-		pr_info("\nusb endpoint descriptor (%i):\n", i);
-		pr_info("bLength=%x\n", endpoint->bLength);
-		pr_info("bDescriptorType=%x\n", endpoint->bDescriptorType);
-		pr_info("bEndpointAddress=%x\n", endpoint->bEndpointAddress);
-		pr_info("wMaxPacketSize=%d\n",
-			 le16_to_cpu(endpoint->wMaxPacketSize));
-		pr_info("bInterval=%x\n", endpoint->bInterval);
+		rtw89_info(rtwdev, "\nusb endpoint descriptor (%i):\n", i);
+		rtw89_info(rtwdev, "bLength=%x\n", endpoint->bLength);
+		rtw89_info(rtwdev, "bDescriptorType=%x\n",
+			   endpoint->bDescriptorType);
+		rtw89_info(rtwdev, "bEndpointAddress=%x\n",
+			   endpoint->bEndpointAddress);
+		rtw89_info(rtwdev, "wMaxPacketSize=%d\n",
+			   le16_to_cpu(endpoint->wMaxPacketSize));
+		rtw89_info(rtwdev, "bInterval=%x\n", endpoint->bInterval);
 
 		if (usb_endpoint_dir_in(endpoint) &&
 		    usb_endpoint_xfer_bulk(endpoint)) {
+			rtw89_info(rtwdev, "USB: dir IN endpoint num %i\n",
+				   num);
 			if (rtwusb->num_in_pipes >=
 			    ARRAY_SIZE(rtwusb->in_pipe_type)) {
 				rtw89_err(rtwdev, "%s: Too many IN pipes\n",
@@ -390,6 +394,8 @@ static int rtw_usb_parse(struct rtw89_dev *rtwdev,
 
 		if (usb_endpoint_dir_in(endpoint) &&
 		    usb_endpoint_xfer_int(endpoint)) {
+			rtw89_info(rtwdev, "USB: dir INT endpoint num %i\n",
+				   num);
 			if (rtwusb->num_in_pipes >=
 			    ARRAY_SIZE(rtwusb->in_pipe_type)) {
 				rtw89_err(rtwdev, "%s: Too many INT pipes\n",
@@ -408,6 +414,8 @@ static int rtw_usb_parse(struct rtw89_dev *rtwdev,
 
 		if (usb_endpoint_dir_out(endpoint) &&
 		    usb_endpoint_xfer_bulk(endpoint)) {
+			rtw89_info(rtwdev, "USB: dir OUT endpoint num %i\n",
+				   num);
 			if (rtwusb->num_out_pipes >=
 			    ARRAY_SIZE(rtwusb->out_pipe)) {
 				rtw89_err(rtwdev, "%s: Too many OUT pipes\n",
@@ -423,23 +431,23 @@ static int rtw_usb_parse(struct rtw89_dev *rtwdev,
 
 	switch (usbd->speed) {
 	case USB_SPEED_LOW:
-		pr_info("USB_SPEED_LOW\n");
+		rtw89_info(rtwdev, "USB_SPEED_LOW\n");
 		rtwusb->usb_speed = RTW_USB_SPEED_1_1;
 		break;
 	case USB_SPEED_FULL:
-		pr_info("USB_SPEED_FULL\n");
+		rtw89_info(rtwdev, "USB_SPEED_FULL\n");
 		rtwusb->usb_speed = RTW_USB_SPEED_1_1;
 		break;
 	case USB_SPEED_HIGH:
-		pr_info("USB_SPEED_HIGH\n");
+		rtw89_info(rtwdev, "USB_SPEED_HIGH\n");
 		rtwusb->usb_speed = RTW_USB_SPEED_2;
 		break;
 	case USB_SPEED_SUPER:
-		pr_info("USB_SPEED_SUPER\n");
+		rtw89_info(rtwdev, "USB_SPEED_SUPER\n");
 		rtwusb->usb_speed = RTW_USB_SPEED_3;
 		break;
 	default:
-		pr_info("USB speed unknown\n");
+		rtw89_info(rtwdev, "USB speed unknown\n");
 		break;
 	}
 
@@ -522,7 +530,7 @@ static void rtw_usb_interface_configure(struct rtw89_dev *rtwdev)
 	else
 		rtwusb->bulkout_size = RTW_USB_FULL_SPEED_BULK_SIZE;
 
-	pr_info("%s : bulkout_size: %d\n", __func__, rtwusb->bulkout_size);
+	rtw89_info(rtwdev, "USB: bulkout_size: %d\n", rtwusb->bulkout_size);
 }
 
 static void rtw_usb_tx_handler(struct work_struct *work)
