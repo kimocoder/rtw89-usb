@@ -66,8 +66,9 @@ void rtw89_phy_cfg_bb(struct rtw89_dev *rtwdev, const struct rtw89_table *tbl,
 	else if (addr == 0xf9)
 		udelay(1);
 	else {
+		//NEO: problem is at here
 		pr_info("[BB][REG][0]0x%04X = 0x%08X\n", addr, data);
-		//rtw89_write32(rtwdev, addr | RTW89_BB_OFST, data);
+		rtw89_write32(rtwdev, addr | RTW89_BB_OFST, data);
 	}
 }
 
