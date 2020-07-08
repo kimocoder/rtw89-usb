@@ -4,7 +4,6 @@
 #define RTW_USB_CMD_READ		0xc0
 #define RTW_USB_CMD_WRITE		0x40
 #define RTW_USB_CMD_REQ			0x05
-#define RTW_USB_CONTROL_MSG_TIMEOUT	500
 
 #define RTW_USB_IS_FULL_SPEED_USB(rtwusb) \
 	((rtwusb)->usb_speed == RTW_USB_SPEED_1_1)
@@ -46,10 +45,6 @@
 
 /* USB Vendor/Product IDs */
 #define RTW_USB_VENDOR_ID_REALTEK		0x0bda
-#define RTW_USB_VENDOR_ID_EDIMAX		0x7392
-#define RTW_USB_PRODUCT_ID_REALTEK_8812B	0xB812
-#define RTW_USB_PRODUCT_ID_REALTEK_8822B	0xB82C
-#define RTW_USB_PRODUCT_ID_REALTEK_8822C	0xC82C
 #define RTW_USB_PRODUCT_ID_REALTEK_8852A	0x885a
 
 /* helper for USB Ids */
@@ -105,13 +100,6 @@ struct rtw_usb_tx_cb {
 struct rtw_usb {
 	struct rtw89_dev *rtwdev;
 	struct usb_device *udev;
-
-	struct mutex usb_buf_mutex; /* mutex for usb_buf */
-	union {
-		__le32 val32;
-		__le16 val16;
-		u8 val8;
-	} usb_buf;
 
 	u8 num_in_pipes;
 	u8 num_out_pipes;

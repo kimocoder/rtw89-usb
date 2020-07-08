@@ -10,32 +10,230 @@
 #include "reg.h"
 #include "usb.h"
 
-#define RTW_USB_MSG_TIMEOUT	300 /* (ms) */
+#define RTW_USB_CONTROL_MSG_TIMEOUT	30000 /* (us) */
+#define RTW_USB_MSG_TIMEOUT	3000 /* (ms) */
+#define RTW_USB_MAX_RXQ_LEN	128
 
-static void rtw_usb_tx_agg(struct rtw_usb *rtwusb, struct sk_buff *skb);
+struct rtw_usb_txcb_t {
+	struct rtw_dev *rtwdev;
+	struct sk_buff_head tx_ack_queue;
+};
+
+struct rtw_usb_ctrlcb_t {
+	atomic_t done;
+	__u8 req_type;
+	int status;
+};
+
 static void rtw_usb_read_port(struct rtw89_dev *rtwdev, u8 addr,
 			      struct rx_usb_ctrl_block *rxcb);
 static void rtw_usb_tx_agg(struct rtw_usb *rtwusb, struct sk_buff *skb);
+static void rtw_usb_txcb_ack(struct rtw_usb_txcb_t *txcb);
 
 /*
  * usb read/write register functions
  */
 
+static void rtw_usb_ctrl_atomic_cb(struct urb *urb)
+{
+	struct rtw_usb_ctrlcb_t *ctx;
+
+	if (!urb)
+		return;
+
+	ctx = (struct rtw_usb_ctrlcb_t *)urb->context;
+	atomic_set(&ctx->done, 1);
+	ctx->status = urb->status;
+
+	/* free dr */
+	kfree(urb->setup_packet);
+}
+
+static int rtw_usb_ctrl_atomic(struct rtw89_dev *rtwdev,
+			       struct usb_device *dev, unsigned int pipe,
+			       __u8 req_type, __u16 value, __u16 index,
+			       void *databuf, __u16 size)
+{
+	struct usb_ctrlrequest *dr = NULL;
+	struct rtw_usb_ctrlcb_t *ctx = NULL;
+	struct urb *urb = NULL;
+	bool done;
+	int ret = -ENOMEM;
+
+	ctx = kmalloc(sizeof(*ctx), GFP_ATOMIC);
+	if (!ctx)
+		goto out;
+
+	dr = kmalloc(sizeof(*dr), GFP_ATOMIC);
+	if (!dr)
+		goto err_free_ctx;
+
+	dr->bRequestType = req_type;
+	dr->bRequest = RTW_USB_CMD_REQ;
+	dr->wValue = cpu_to_le16(value);
+	dr->wIndex = cpu_to_le16(index);
+	dr->wLength = cpu_to_le16(size);
+
+	urb = usb_alloc_urb(0, GFP_ATOMIC);
+	if (!urb)
+		goto err_free_dr;
+
+	atomic_set(&ctx->done, 0);
+	ctx->req_type = req_type;
+	usb_fill_control_urb(urb, dev, pipe, (unsigned char *)dr, databuf, size,
+			     rtw_usb_ctrl_atomic_cb, ctx);
+	ret = usb_submit_urb(urb, GFP_ATOMIC);
+	if (unlikely(ret)) {
+		rtw89_err(rtwdev, "failed to submit urb, ret=%d\n", ret);
+		goto err_free_urb;
+	}
+
+	done = false;
+	read_poll_timeout_atomic(atomic_read, done, done, 100,
+				 RTW_USB_CONTROL_MSG_TIMEOUT, false,
+				 &ctx->done);
+	if (!done) {
+		usb_kill_urb(urb);
+		rtw89_err(rtwdev, "failed to wait usb ctrl req:%u\n", req_type);
+		ret = (ctx->status == -ENOENT ? -ETIMEDOUT : ctx->status);
+	} else {
+		ret = 0;
+	}
+
+	kfree(ctx);
+	usb_free_urb(urb);
+	return ret;
+
+err_free_urb:
+	usb_free_urb(urb);
+err_free_dr:
+	kfree(dr);
+err_free_ctx:
+	kfree(ctx);
+out:
+	return ret;
+}
+
+static u8 rtw_usb_read8_atomic(struct rtw89_dev *rtwdev, u32 addr)
+{
+	struct rtw_usb *rtwusb = (struct rtw_usb *)rtwdev->priv;
+	struct usb_device *udev = rtwusb->udev;
+	u8 *buf = NULL, data;
+
+	buf = kmalloc(sizeof(*buf), GFP_ATOMIC);
+	if (!buf)
+		return 0;
+
+	rtw_usb_ctrl_atomic(rtwdev, udev, usb_sndctrlpipe(udev, 0),
+			    RTW_USB_CMD_READ, addr, 0, buf, sizeof(*buf));
+	data = *buf;
+	kfree(buf);
+
+	return data;
+}
+
+static u16 rtw_usb_read16_atomic(struct rtw89_dev *rtwdev, u32 addr)
+{
+	struct rtw_usb *rtwusb = (struct rtw_usb *)rtwdev->priv;
+	struct usb_device *udev = rtwusb->udev;
+	__le16 *buf = NULL;
+	u16 data;
+
+	buf = kmalloc(sizeof(*buf), GFP_ATOMIC);
+	if (!buf)
+		return 0;
+
+	rtw_usb_ctrl_atomic(rtwdev, udev, usb_sndctrlpipe(udev, 0),
+			    RTW_USB_CMD_READ, addr, 0, buf, sizeof(*buf));
+	data = *buf;
+	kfree(buf);
+
+	return data;
+}
+
+static u32 rtw_usb_read32_atomic(struct rtw89_dev *rtwdev, u32 addr)
+{
+	struct rtw_usb *rtwusb = (struct rtw_usb *)rtwdev->priv;
+	struct usb_device *udev = rtwusb->udev;
+	__le32 *buf;
+	u32 data;
+
+	buf = kmalloc(sizeof(*buf), GFP_ATOMIC);
+	if (!buf)
+		return 0;
+
+	rtw_usb_ctrl_atomic(rtwdev, udev, usb_sndctrlpipe(udev, 0),
+			    RTW_USB_CMD_READ, addr, 0, buf, sizeof(*buf));
+	data = *buf;
+	kfree(buf);
+
+	return data;
+}
+
+static void rtw_usb_write8_atomic(struct rtw89_dev *rtwdev, u32 addr, u8 val)
+{
+	struct rtw_usb *rtwusb = (struct rtw_usb *)rtwdev->priv;
+	struct usb_device *udev = rtwusb->udev;
+	u8 *buf;
+
+	buf = kmalloc(sizeof(*buf), GFP_ATOMIC);
+	if (!buf)
+		return;
+
+	*buf = val;
+	rtw_usb_ctrl_atomic(rtwdev, udev, usb_sndctrlpipe(udev, 0),
+			    RTW_USB_CMD_WRITE, addr, 0, buf, sizeof(*buf));
+	kfree(buf);
+}
+
+static void rtw_usb_write16_atomic(struct rtw89_dev *rtwdev, u32 addr, u16 val)
+{
+	struct rtw_usb *rtwusb = (struct rtw_usb *)rtwdev->priv;
+	struct usb_device *udev = rtwusb->udev;
+	__le16 *buf;
+
+	buf = kmalloc(sizeof(*buf), GFP_ATOMIC);
+	if (!buf)
+		return;
+
+	*buf = cpu_to_le16(val);
+	rtw_usb_ctrl_atomic(rtwdev, udev, usb_sndctrlpipe(udev, 0),
+			    RTW_USB_CMD_WRITE, addr, 0, buf, sizeof(*buf));
+	kfree(buf);
+}
+
+static void rtw_usb_write32_atomic(struct rtw89_dev *rtwdev, u32 addr, u32 val)
+{
+	struct rtw_usb *rtwusb = (struct rtw_usb *)rtwdev->priv;
+	struct usb_device *udev = rtwusb->udev;
+	__le32 *buf;
+
+	buf = kmalloc(sizeof(*buf), GFP_ATOMIC);
+	if (!buf)
+		return;
+
+	*buf = cpu_to_le32(val);
+	rtw_usb_ctrl_atomic(rtwdev, udev, usb_sndctrlpipe(udev, 0),
+			    RTW_USB_CMD_WRITE, addr, 0, buf, sizeof(*buf));
+	kfree(buf);
+}
+
 static u8 rtw_usb_read8(struct rtw89_dev *rtwdev, u32 addr)
 {
 	struct rtw_usb *rtwusb = (struct rtw_usb *)rtwdev->priv;
 	struct usb_device *udev = rtwusb->udev;
-	int len;
-	u8 data;
+	u8 *buf = NULL, data;
 
-	mutex_lock(&rtwusb->usb_buf_mutex);
-	len = usb_control_msg(udev, usb_rcvctrlpipe(udev, 0),
-			      RTW_USB_CMD_REQ, RTW_USB_CMD_READ,
-			      addr, 0, &rtwusb->usb_buf.val8,
-			      sizeof(rtwusb->usb_buf.val8),
-			      RTW_USB_CONTROL_MSG_TIMEOUT);
-	data = rtwusb->usb_buf.val8;
-	mutex_unlock(&rtwusb->usb_buf_mutex);
+	buf = kmalloc(sizeof(*buf), GFP_ATOMIC);
+	if (!buf)
+		return 0;
+
+	usb_control_msg(udev, usb_rcvctrlpipe(udev, 0),
+			RTW_USB_CMD_REQ, RTW_USB_CMD_READ,
+			addr, 0, buf, sizeof(*buf),
+			RTW_USB_CONTROL_MSG_TIMEOUT);
+	data = *buf;
+	kfree(buf);
 
 	return data;
 }
@@ -44,17 +242,19 @@ static u16 rtw_usb_read16(struct rtw89_dev *rtwdev, u32 addr)
 {
 	struct rtw_usb *rtwusb = (struct rtw_usb *)rtwdev->priv;
 	struct usb_device *udev = rtwusb->udev;
-	int len;
+	__le16 *buf = NULL;
 	u16 data;
 
-	mutex_lock(&rtwusb->usb_buf_mutex);
-	len = usb_control_msg(udev, usb_rcvctrlpipe(udev, 0),
-			      RTW_USB_CMD_REQ, RTW_USB_CMD_READ,
-			      addr, 0, &rtwusb->usb_buf.val16,
-			      sizeof(rtwusb->usb_buf.val16),
-			      RTW_USB_CONTROL_MSG_TIMEOUT);
-	data = le16_to_cpu(rtwusb->usb_buf.val16);
-	mutex_unlock(&rtwusb->usb_buf_mutex);
+	buf = kmalloc(sizeof(*buf), GFP_ATOMIC);
+	if (!buf)
+		return 0;
+
+	usb_control_msg(udev, usb_rcvctrlpipe(udev, 0),
+			RTW_USB_CMD_REQ, RTW_USB_CMD_READ,
+			addr, 0, buf, sizeof(*buf),
+			RTW_USB_CONTROL_MSG_TIMEOUT);
+	data = le16_to_cpu(*buf);
+	kfree(buf);
 
 	return data;
 }
@@ -63,17 +263,20 @@ static u32 rtw_usb_read32(struct rtw89_dev *rtwdev, u32 addr)
 {
 	struct rtw_usb *rtwusb = (struct rtw_usb *)rtwdev->priv;
 	struct usb_device *udev = rtwusb->udev;
-	int len;
+	__le32 *buf;
 	u32 data;
 
-	mutex_lock(&rtwusb->usb_buf_mutex);
-	len = usb_control_msg(udev, usb_rcvctrlpipe(udev, 0),
-			      RTW_USB_CMD_REQ, RTW_USB_CMD_READ,
-			      addr, 0, &rtwusb->usb_buf.val32,
-			      sizeof(rtwusb->usb_buf.val32),
-			      RTW_USB_CONTROL_MSG_TIMEOUT);
-	data = le32_to_cpu(rtwusb->usb_buf.val32);
-	mutex_unlock(&rtwusb->usb_buf_mutex);
+	buf = kmalloc(sizeof(*buf), GFP_ATOMIC);
+	if (!buf)
+		return 0;
+
+	usb_control_msg(udev, usb_rcvctrlpipe(udev, 0),
+			RTW_USB_CMD_REQ, RTW_USB_CMD_READ,
+			addr, 0, buf, sizeof(*buf),
+			RTW_USB_CONTROL_MSG_TIMEOUT);
+
+	data = le32_to_cpu(*buf);
+	kfree(buf);
 
 	return data;
 }
@@ -82,49 +285,54 @@ static void rtw_usb_write8(struct rtw89_dev *rtwdev, u32 addr, u8 val)
 {
 	struct rtw_usb *rtwusb = (struct rtw_usb *)rtwdev->priv;
 	struct usb_device *udev = rtwusb->udev;
-	int ret;
+	u8 *buf;
 
-	mutex_lock(&rtwusb->usb_buf_mutex);
-	rtwusb->usb_buf.val8 = val;
-	ret = usb_control_msg(udev, usb_sndctrlpipe(udev, 0),
-			      RTW_USB_CMD_REQ, RTW_USB_CMD_WRITE,
-			      addr, 0, &rtwusb->usb_buf.val8,
-			      sizeof(rtwusb->usb_buf.val8),
-			      RTW_USB_CONTROL_MSG_TIMEOUT);
+	buf = kmalloc(sizeof(*buf), GFP_ATOMIC);
+	if (!buf)
+		return;
 
-	mutex_unlock(&rtwusb->usb_buf_mutex);
+	*buf = val;
+	usb_control_msg(udev, usb_sndctrlpipe(udev, 0),
+			RTW_USB_CMD_REQ, RTW_USB_CMD_WRITE,
+			addr, 0, buf, sizeof(*buf),
+			RTW_USB_CONTROL_MSG_TIMEOUT);
+	kfree(buf);
 }
 
 static void rtw_usb_write16(struct rtw89_dev *rtwdev, u32 addr, u16 val)
 {
 	struct rtw_usb *rtwusb = (struct rtw_usb *)rtwdev->priv;
 	struct usb_device *udev = rtwusb->udev;
-	int ret;
+	__le16 *buf;
 
-	mutex_lock(&rtwusb->usb_buf_mutex);
-	rtwusb->usb_buf.val16 = cpu_to_le16(val);
-	ret = usb_control_msg(udev, usb_sndctrlpipe(udev, 0),
-			      RTW_USB_CMD_REQ, RTW_USB_CMD_WRITE,
-			      addr, 0, &rtwusb->usb_buf.val16,
-			      sizeof(rtwusb->usb_buf.val16),
-			      RTW_USB_CONTROL_MSG_TIMEOUT);
-	mutex_unlock(&rtwusb->usb_buf_mutex);
+	buf = kmalloc(sizeof(*buf), GFP_ATOMIC);
+	if (!buf)
+		return;
+
+	*buf = cpu_to_le16(val);
+	usb_control_msg(udev, usb_sndctrlpipe(udev, 0),
+			RTW_USB_CMD_REQ, RTW_USB_CMD_WRITE,
+			addr, 0, buf, sizeof(*buf),
+			RTW_USB_CONTROL_MSG_TIMEOUT);
+	kfree(buf);
 }
 
 static void rtw_usb_write32(struct rtw89_dev *rtwdev, u32 addr, u32 val)
 {
 	struct rtw_usb *rtwusb = (struct rtw_usb *)rtwdev->priv;
 	struct usb_device *udev = rtwusb->udev;
-	int ret;
+	__le32 *buf;
 
-	mutex_lock(&rtwusb->usb_buf_mutex);
-	rtwusb->usb_buf.val32 = cpu_to_le32(val);
-	ret = usb_control_msg(udev, usb_sndctrlpipe(udev, 0),
-			      RTW_USB_CMD_REQ, RTW_USB_CMD_WRITE,
-			      addr, 0, &rtwusb->usb_buf.val32,
-			      sizeof(rtwusb->usb_buf.val32),
-			      RTW_USB_CONTROL_MSG_TIMEOUT);
-	mutex_unlock(&rtwusb->usb_buf_mutex);
+	buf = kmalloc(sizeof(*buf), GFP_ATOMIC);
+	if (!buf)
+		return;
+
+	*buf = cpu_to_le32(val);
+	usb_control_msg(udev, usb_sndctrlpipe(udev, 0),
+			RTW_USB_CMD_REQ, RTW_USB_CMD_WRITE,
+			addr, 0, buf, sizeof(*buf),
+			RTW_USB_CONTROL_MSG_TIMEOUT);
+	kfree(buf);
 }
 
 static int rtw_usb_parse(struct rtw89_dev *rtwdev,
@@ -1093,8 +1301,6 @@ static int rtw_usb_intf_init(struct rtw89_dev *rtwdev,
 	usb_set_intfdata(intf, rtwdev->hw);
 	rtw_usb_interface_configure(rtwdev);
 	SET_IEEE80211_DEV(rtwdev->hw, &intf->dev);
-	mutex_init(&rtwusb->usb_buf_mutex);
-
 	return 0;
 }
 
@@ -1105,7 +1311,6 @@ static void rtw_usb_intf_deinit(struct rtw89_dev *rtwdev,
 
 	usb_put_dev(rtwusb->udev);
 	usb_set_intfdata(intf, NULL);
-	mutex_destroy(&rtwusb->usb_buf_mutex);
 }
 
 static int rtw_usb_probe(struct usb_interface *intf,
