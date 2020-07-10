@@ -514,6 +514,13 @@ struct rtw89_dev {
 	struct list_head txqs;
 	struct tasklet_struct txq_tasklet;
 
+	/* phy */
+	bool dack_done;
+	u8 msbk_d[2][2][16];
+	u8 dadck_d[2][2];
+	u16 addck_d[2][2];
+	u16 biask_d[2][2];
+
 	bool debug;
 	/* HCI related data, keep last */
 	u8 priv[0] __aligned(sizeof(void *));

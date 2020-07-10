@@ -766,6 +766,4 @@
 #define R_AX_TXPWR_ISR 0xD9E4
 #define R_AX_TXPWR_ISR_C1 0xF9E4
 
-#define RTW89_BB_OFST 0x10000
-
 #endif
