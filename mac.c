@@ -1633,8 +1633,10 @@ int rtw89_mac_dle_init(struct rtw89_dev *rtwdev, enum rtw89_qta_mode mode,
 	u32 cnt;
 
 	ret = rtw89_mac_check_mac_en(rtwdev, 0, RTW89_DMAC_SEL);
-	if (ret)
+	if (ret) {
+		rtw89_err(rtwdev, "failed to enable MAC\n");
 		return ret;
+	}
 
 	cfg = get_dle_mem_cfg(rtwdev, mode);
 	if (!cfg) {
