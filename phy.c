@@ -55,27 +55,42 @@ union rtw89_phy_table_tile1 {
 	struct rtw89_phy_cfg_pair cfg;
 };
 
-static inline u32 rtw89_rf_read32(struct rtw89_dev *rtwdev, u32 addr)
+static inline u32 rtw89_bb_read32(struct rtw89_dev *rtwdev, u32 addr)
 {
 	return rtw89_read32(rtwdev, addr | RTW89_BB_OFST);
 }
 
-static inline void rtw89_rf_write32(struct rtw89_dev *rtwdev,
+
+static void rtw89_phy_bb_recover(struct rtw89_dev *rtwdev, u32 addr, u32 data);
+
+static inline void rtw89_bb_write32(struct rtw89_dev *rtwdev,
 				    u32 addr, u32 data)
 {
-	rtw89_write32(rtwdev, addr | RTW89_BB_OFST, data);
+	addr |= RTW89_BB_OFST;
+	rtw89_write32(rtwdev, addr, data);
+	rtw89_phy_bb_recover(rtwdev, addr, data);
 }
 
-static inline void rtw89_rf_write32_set(struct rtw89_dev *rtwdev,
+static inline void rtw89_bb_write32_set(struct rtw89_dev *rtwdev,
 					u32 addr, u32 bit)
 {
-	rtw89_write32_set(rtwdev, addr | RTW89_BB_OFST, bit);
+	u32 data;
+
+	addr |= RTW89_BB_OFST;
+	rtw89_write32_set(rtwdev, addr, bit);
+	data = rtw89_read32(rtwdev, addr);
+	rtw89_phy_bb_recover(rtwdev, addr, data);
 }
 
-static inline void rtw89_rf_write32_clr(struct rtw89_dev *rtwdev,
+static inline void rtw89_bb_write32_clr(struct rtw89_dev *rtwdev,
 					u32 addr, u32 bit)
 {
-	rtw89_write32_clr(rtwdev, addr | RTW89_BB_OFST, bit);
+	u32 data;
+
+	addr |= RTW89_BB_OFST;
+	rtw89_write32_clr(rtwdev, addr, bit);
+	data = rtw89_read32(rtwdev, addr);
+	rtw89_phy_bb_recover(rtwdev, addr, data);
 }
 
 /* rtw89_bb_write32 */
@@ -97,33 +112,33 @@ static void rtw89_phy_rf_dack_reload_by_path(struct rtw89_dev *rtwdev,
 	for (i = 0; i < 4; i++)
 		val |= rtwdev->msbk_d[path][index][i + 12] << (i * 8);
 	reg = 0x4c14 + reg_offset;
-	rtw89_rf_write32(rtwdev, reg, val);
+	rtw89_bb_write32(rtwdev, reg, val);
 
 	/* msbk_id: 11/10/9/8 */
 	val = 0;
 	for (i = 0; i < 4; i++)
 		val |= rtwdev->msbk_d[path][index][i + 8] << (i * 8);
 	reg = 0x4c18 + reg_offset;
-	rtw89_rf_write32(rtwdev, reg, val);
+	rtw89_bb_write32(rtwdev, reg, val);
 
 	/* msbk_id: 7/6/5/4 */
 	val = 0;
 	for (i = 0; i < 4; i++)
 		val |= rtwdev->msbk_d[path][index][i + 4] << (i * 8);
 	reg = 0x4c1c + reg_offset;
-	rtw89_rf_write32(rtwdev, reg, val);
+	rtw89_bb_write32(rtwdev, reg, val);
 
 	/* msbk_id: 3/2/1/0 */
 	val = 0;
 	for (i = 0; i < 4; i++)
 		val |= rtwdev->msbk_d[path][index][i] << (i * 8);
 	reg = 0x4c20 + reg_offset;
-	rtw89_rf_write32(rtwdev, reg, val);
+	rtw89_bb_write32(rtwdev, reg, val);
 
 	val = (rtwdev->biask_d[path][index] << 22) |
 	      (rtwdev->dadck_d[path][index] << 14);
 	reg = 0x4c24 + reg_offset;
-	rtw89_rf_write32(rtwdev, reg, val);
+	rtw89_bb_write32(rtwdev, reg, val);
 }
 
 static void rtw89_phy_rf_dack_reload(struct rtw89_dev *rtwdev)
@@ -131,45 +146,45 @@ static void rtw89_phy_rf_dack_reload(struct rtw89_dev *rtwdev)
 	u32 val_4cb8_orig, val_4db8_orig;
 	int i;
 
-	val_4cb8_orig = rtw89_rf_read32(rtwdev, 0x4cb8);
-	val_4db8_orig = rtw89_rf_read32(rtwdev, 0x4db8);
+	val_4cb8_orig = rtw89_bb_read32(rtwdev, 0x4cb8);
+	val_4db8_orig = rtw89_bb_read32(rtwdev, 0x4db8);
 
-	rtw89_rf_write32_clr(rtwdev, 0x0b2c, BIT(31));
+	rtw89_bb_write32_clr(rtwdev, 0x0b2c, BIT(31));
 	/* step 1 */
-	rtw89_rf_write32_set(rtwdev, 0x4c00, BIT(3));
-	rtw89_rf_write32_set(rtwdev, 0x4c50, BIT(3));
-	rtw89_rf_write32_set(rtwdev, 0x4cb8, BIT(30));
-	rtw89_rf_write32_set(rtwdev, 0x4db8, BIT(30));
+	rtw89_bb_write32_set(rtwdev, 0x4c00, BIT(3));
+	rtw89_bb_write32_set(rtwdev, 0x4c50, BIT(3));
+	rtw89_bb_write32_set(rtwdev, 0x4cb8, BIT(30));
+	rtw89_bb_write32_set(rtwdev, 0x4db8, BIT(30));
 
-	rtw89_rf_write32_set(rtwdev, 0x4ce0, BIT(19));
-	rtw89_rf_write32_clr(rtwdev, 0x4de0, BIT(19));
+	rtw89_bb_write32_set(rtwdev, 0x4ce0, BIT(19));
+	rtw89_bb_write32_clr(rtwdev, 0x4de0, BIT(19));
 
 	for (i = 0; i < 2; i++)
 		rtw89_phy_rf_dack_reload_by_path(rtwdev, RF_PATH_A, i);
 
-	rtw89_rf_write32_set(rtwdev, 0x4c10, BIT(31));
-	rtw89_rf_write32_set(rtwdev, 0x4c60, BIT(31));
-	rtw89_rf_write32_clr(rtwdev, 0x4c00, BIT(3));
-	rtw89_rf_write32_clr(rtwdev, 0x4c50, BIT(3));
+	rtw89_bb_write32_set(rtwdev, 0x4c10, BIT(31));
+	rtw89_bb_write32_set(rtwdev, 0x4c60, BIT(31));
+	rtw89_bb_write32_clr(rtwdev, 0x4c00, BIT(3));
+	rtw89_bb_write32_clr(rtwdev, 0x4c50, BIT(3));
 	/* step 2 */
-	rtw89_rf_write32_clr(rtwdev, 0x4ce0, BIT(19));
-	rtw89_rf_write32_set(rtwdev, 0x4c00, BIT(3));
-	rtw89_rf_write32_set(rtwdev, 0x4c50, BIT(3));
-	rtw89_rf_write32_clr(rtwdev, 0x4c10, BIT(31));
-	rtw89_rf_write32_clr(rtwdev, 0x4c60, BIT(31));
-	rtw89_rf_write32_set(rtwdev, 0x4de0, BIT(19));
+	rtw89_bb_write32_clr(rtwdev, 0x4ce0, BIT(19));
+	rtw89_bb_write32_set(rtwdev, 0x4c00, BIT(3));
+	rtw89_bb_write32_set(rtwdev, 0x4c50, BIT(3));
+	rtw89_bb_write32_clr(rtwdev, 0x4c10, BIT(31));
+	rtw89_bb_write32_clr(rtwdev, 0x4c60, BIT(31));
+	rtw89_bb_write32_set(rtwdev, 0x4de0, BIT(19));
 	/* step 3 */
 	for (i = 0; i < 2; i++)
 		rtw89_phy_rf_dack_reload_by_path(rtwdev, RF_PATH_B, i);
-	rtw89_rf_write32_set(rtwdev, 0x4d10, BIT(31));
-	rtw89_rf_write32_set(rtwdev, 0x4d60, BIT(31));
-	rtw89_rf_write32_clr(rtwdev, 0x4d00, BIT(3));
-	rtw89_rf_write32_clr(rtwdev, 0x4d50, BIT(3));
+	rtw89_bb_write32_set(rtwdev, 0x4d10, BIT(31));
+	rtw89_bb_write32_set(rtwdev, 0x4d60, BIT(31));
+	rtw89_bb_write32_clr(rtwdev, 0x4d00, BIT(3));
+	rtw89_bb_write32_clr(rtwdev, 0x4d50, BIT(3));
 	/* step 4 */
-	rtw89_rf_write32_set(rtwdev, 0x4ce0, BIT(19));
+	rtw89_bb_write32_set(rtwdev, 0x4ce0, BIT(19));
 
-	rtw89_rf_write32(rtwdev, 0x4cb8, val_4cb8_orig);
-	rtw89_rf_write32(rtwdev, 0x4db8, val_4db8_orig);
+	rtw89_bb_write32(rtwdev, 0x4cb8, val_4cb8_orig);
+	rtw89_bb_write32(rtwdev, 0x4db8, val_4db8_orig);
 }
 
 static void rtw89_phy_rf_dack_recover(struct rtw89_dev *rtwdev,
@@ -185,24 +200,24 @@ static void rtw89_phy_rf_dack_recover(struct rtw89_dev *rtwdev,
 		v2 = array[i + 1];
 
 		if (offset == v1) {
-			rtw89_rf_write32(rtwdev, 0x4c00 | offset, v2);
+			rtw89_bb_write32(rtwdev, 0x4c00 | offset, v2);
 
 			/* halrf_dac_cal_8852a */
 			if ((!rtwdev->dack_done) &&
 			    ((offset == 0x10) || (offset == 0x60)))
-				rtw89_rf_write32(rtwdev,
+				rtw89_bb_write32(rtwdev,
 						 0x4c00 | offset, 0x22000001);
 
 			if (((offset == 0x0) &&
 			     ((!(val & BIT(0))) || (val & BIT(1))) &&
 			     (val != 0x1) && (val != 0x11)) ||
 			    ((offset == 0x50) && (val & BIT(1)))) {
-				rtw89_rf_write32(rtwdev, 0x4c00, 0x0030EB40);
-				rtw89_rf_write32(rtwdev, 0x4c00, 0x0030EB41);
-				rtw89_rf_write32(rtwdev, 0x3800, 0x01);
-				rtw89_rf_write32(rtwdev, 0x3800, 0x11);
-				rtw89_rf_write32(rtwdev, 0x3880, 0x01);
-				rtw89_rf_write32(rtwdev, 0x3880, 0x11);
+				rtw89_bb_write32(rtwdev, 0x4c00, 0x0030EB40);
+				rtw89_bb_write32(rtwdev, 0x4c00, 0x0030EB41);
+				rtw89_bb_write32(rtwdev, 0x3800, 0x01);
+				rtw89_bb_write32(rtwdev, 0x3800, 0x11);
+				rtw89_bb_write32(rtwdev, 0x3880, 0x01);
+				rtw89_bb_write32(rtwdev, 0x3880, 0x11);
 			}
 
 			break;
@@ -221,7 +236,7 @@ static void rtw89_phy_rf_dack_recover(struct rtw89_dev *rtwdev,
 		rtw89_phy_rf_dack_reload(rtwdev);
 }
 
-static void rtw89_phy_rf_recover(struct rtw89_dev *rtwdev, u32 addr, u32 data)
+static void rtw89_phy_bb_recover(struct rtw89_dev *rtwdev, u32 addr, u32 data)
 {
 	u8 offset;
 
@@ -237,14 +252,6 @@ static void rtw89_phy_rf_recover(struct rtw89_dev *rtwdev, u32 addr, u32 data)
 	offset = (u8)(addr & 0xFF);
 	if (offset <= 0x9F)
 		rtw89_phy_rf_dack_recover(rtwdev, offset, data);
-}
-
-static inline void rtw89_bb_write32(struct rtw89_dev *rtwdev,
-				    u32 addr, u32 data)
-{
-	data |= RTW89_BB_OFST;
-	rtw89_write32(rtwdev, addr, data);
-	rtw89_phy_rf_recover(rtwdev, addr, data);
 }
 
 int rtw89_halrf_send_h2c(struct rtw89_dev *rtwdev,
@@ -290,9 +297,8 @@ void rtw89_phy_cfg_bb(struct rtw89_dev *rtwdev, const struct rtw89_table *tbl,
 		udelay(1);
 		break;
 	default:
-		//NEO: problem is at here
-		pr_info("[BB][REG][0]0x%04X = 0x%08X\n", addr, data);
-		//rtw89_bb_write32(rtwdev, addr | RTW89_BB_OFST, data);
+		//pr_info("[BB][REG][0]0x%04X = 0x%08X\n", addr, data);
+		rtw89_bb_write32(rtwdev, addr | RTW89_BB_OFST, data);
 		break;
 	}
 }
@@ -591,7 +597,7 @@ void rtw89_phy_load_tables(struct rtw89_dev *rtwdev)
 
 	rtwdev->dack_done = false;
 
-	pr_info("%s: bb_tbl, in_interrupt:%lu\n", __func__, in_interrupt());
+	pr_info("%s: bb_tbl\n", __func__);
 	rtw89_load_table(rtwdev, chip->bb_tbl);
 
 	pr_info("%s: phy reset \n", __func__);
@@ -600,6 +606,7 @@ void rtw89_phy_load_tables(struct rtw89_dev *rtwdev)
 	pr_info("%s: load table radio A \n", __func__);
 	tbl = chip->rf_tbl[RF_PATH_A];
 	rtw89_load_table(rtwdev, tbl);
+
 	pr_info("%s: load table radio B \n", __func__);
 	tbl = chip->rf_tbl[RF_PATH_B];
 	rtw89_load_table(rtwdev, tbl);

@@ -958,7 +958,8 @@ static int dmac_func_en(struct rtw89_dev *rtwdev)
 	if (rtwdev->hci.type == RTW89_HCI_TYPE_PCIE) {
 		ret = rst_bdram_pcie(rtwdev, 0);
 		if (ret) {
-			rtw89_err(rtwdev, "[ERR]dmac en rst pcie bdram %d\n", ret);
+			rtw89_err(rtwdev, "[ERR]dmac en rst pcie bdram %d\n",
+				  ret);
 			return ret;
 		}
 	}
