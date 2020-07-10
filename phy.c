@@ -261,8 +261,6 @@ int rtw89_halrf_send_h2c(struct rtw89_dev *rtwdev,
 	bool is_fwdl = false;
 	int ret;
 
-	rtwdev->debug = true;
-
 	ret = rtw89_mac_send_h2c(rtwdev, buf, len,
 				 RTW89_FWCMD_H2C_CAT_OUTSRC,
 				 cl, func, is_fwdl);
@@ -271,7 +269,6 @@ int rtw89_halrf_send_h2c(struct rtw89_dev *rtwdev,
 
 	fw_info->h2c_seq++;
 
-	rtwdev->debug = false;
 	return ret;
 }
 void rtw89_phy_cfg_bb(struct rtw89_dev *rtwdev, const struct rtw89_table *tbl,
