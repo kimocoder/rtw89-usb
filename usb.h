@@ -1,7 +1,7 @@
 #ifndef __RTW_USB_H_
 #define __RTW_USB_H_
 
-#define RTW_USB_CMD_READ		0xc0
+#define RTW_USB_CMD_READ		0xC0
 #define RTW_USB_CMD_WRITE		0x40
 #define RTW_USB_CMD_REQ			0x05
 
