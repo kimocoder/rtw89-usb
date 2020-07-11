@@ -5,6 +5,59 @@
 #ifndef __RTW89_TXRX_H__
 #define __RTW89_TXRX_H__
 
+#define RTW89_TX_WD_BODY_LEN	24
+#define RTW89_TX_WD_INFO_LEN	24
+
+struct rtw89_txdesc_wd_body {
+	/* dword0 */
+	u8 hwseq_mode_en:2;
+	u8 hwssn_sel:2;
+	u8 smh_en:1;
+	u8 hwamsdu:1;
+	u8 hw_aes_iv:1;
+	u8 wd_page:1;
+	u8 chk_en:1;
+	u8 wp_int:1;
+	u8 stf_mode:1;
+	u8 hdr_llc_len:5;
+	u8 ch_dma:4;
+	u8 fwdl_en:1;
+	u8 pkt_offset:1;
+	u8 wdinfo_en:1;
+	u8 moredata:1;
+	u8 wp_offset;
+
+	/* dword1 */
+	u8 shcut_camid;
+	u8 dma_txagg_num;
+	u8 resv1:4;
+	u16 pld:12;
+
+	/* dword2 */
+	u32 txpktsize:14;
+	u32 ru_tc:3;
+	u32 qsel:6;
+	u32 tid_ind:1;
+	u32 macid:7;
+	u32 resv2:1;
+
+	/* dword3 */
+	u32 wifi_seq:12;
+	u32 agg_en:1;
+	u32 bk:1;
+	u32 rts_tc:6;
+	u32 data_tc:6;
+	u32 mu_2nd_tc:3;
+	u32 mu_tc:3;
+
+	/* dword4 */
+	u16 checksum;
+	u16 aes_iv_l;
+
+	/* dword5 */
+	u32 aes_iv_h;
+} __packed;
+
 /* TX WD BODY DWORD 0 */
 #define RTW89_TXWD_WP_OFFSET		GENMASK(31, 24)
 #define RTW89_TXWD_MORE_DATA		BIT(23)
@@ -30,6 +83,9 @@
 /* TX WD BODY DWORD 5 */
 
 /* TX WD INFO DWORD 0 */
+#define RTW89_TXWD_USE_RATE		BIT(30)
+#define RTW89_TXWD_DATA_RATE		GENMASK(24, 16)
+#define RTW89_TXWD_DISDATAFB		BIT(10)
 
 /* TX WD INFO DWORD 1 */
 

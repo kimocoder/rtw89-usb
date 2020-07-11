@@ -8,6 +8,8 @@
 #include "txrx.h"
 #include "debug.h"
 #include "mac.h"
+#include "fw.h"
+#include "efuse.h"
 
 static struct ieee80211_channel rtw89_channels_2ghz[] = {
 	{ .center_freq = 2412, .hw_value = 1, },
@@ -110,10 +112,14 @@ rtw89_core_tx_update_mgmt_info(struct rtw89_dev *rtwdev,
 {
 	struct rtw89_tx_desc_info *desc_info = &tx_req->desc_info;
 
+	desc_info->en_wd_info = true;
 	desc_info->wp_offset = 0;
 	desc_info->ch_dma = RTW89_DMA_B0MG; /* TODO: check B0/B1 */
 	desc_info->qsel = 0x12;
 	desc_info->hdr_llc_len = 24;
+	desc_info->use_rate = true;
+	desc_info->dis_data_fb = true;
+	desc_info->data_rate = 0x80;
 }
 
 static void
@@ -204,6 +210,10 @@ void rtw89_core_fill_txdesc(struct rtw89_dev *rtwdev,
 		return;
 
 	txwd_info = txdesc + sizeof(*txwd_body);
+	dword = FIELD_PREP(RTW89_TXWD_USE_RATE, desc_info->use_rate) |
+		FIELD_PREP(RTW89_TXWD_DATA_RATE, desc_info->data_rate) |
+		FIELD_PREP(RTW89_TXWD_DISDATAFB, desc_info->dis_data_fb);
+	txwd_info->dword0 = dword;
 }
 EXPORT_SYMBOL(rtw89_core_fill_txdesc);
 
@@ -331,6 +341,18 @@ static int rtw89_core_init(struct rtw89_dev *rtwdev)
 	tasklet_init(&rtwdev->txq_tasklet, rtw89_core_txq_tasklet, data);
 	spin_lock_init(&rtwdev->txq_lock);
 
+	ret = rtw89_fw_request(rtwdev);
+	if (ret) {
+		rtw89_err(rtwdev, "failed to request firmware\n");
+		return ret;
+	}
+
+	ret = rtw89_efuse_init(rtwdev);
+	if (ret) {
+		rtw89_err(rtwdev, "failed to init efuse\n");
+		return ret;
+	}
+
 	ret = rtw89_core_set_supported_band(rtwdev);
 	if (ret) {
 		rtw89_err(rtwdev, "failed to set supported band\n");
@@ -344,6 +366,8 @@ static void rtw89_core_deinit(struct rtw89_dev *rtwdev)
 {
 	rtw89_core_clr_supported_band(rtwdev);
 	tasklet_kill(&rtwdev->txq_tasklet);
+	if (!rtwdev->fw.bin_info)
+		kfree(rtwdev->fw.bin_info);
 }
 
 static int rtw89_core_register_hw(struct rtw89_dev *rtwdev)

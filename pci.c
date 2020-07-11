@@ -30,6 +30,8 @@ static u32 rtw89_pci_dma_recalc(struct rtw89_dev *rtwdev,
 
 	bd_ring->rp = cur_rp;
 
+	printk("ring rp=%2d wp=%2d, cur=%2d, tx=%d\n", rp, wp, cur_rp, tx);
+
 	return cnt;
 }
 
@@ -41,6 +43,7 @@ static u32 rtw89_pci_txbd_recalc(struct rtw89_dev *rtwdev,
 	u32 cnt, idx;
 
 	idx = rtw89_read32(rtwdev, addr_idx);
+	printk("read idx=0x%08x from 0x%08x\n", idx, addr_idx);
 	cnt = rtw89_pci_dma_recalc(rtwdev, bd_ring, idx, true);
 
 	return cnt;
@@ -471,46 +474,48 @@ static irqreturn_t rtw89_pci_interrupt_threadfn(int irq, void *dev)
 {
 	struct rtw89_dev *rtwdev = dev;
 	struct rtw89_pci *rtwpci = (struct rtw89_pci *)rtwdev->priv;
-	u32 intrs[2];
+	u32 isrs[2];
 	unsigned long flags;
 
-	intrs[0] = rtwpci->intrs[0];
-	intrs[1] = rtwpci->intrs[1];
+	isrs[0] = rtwpci->isrs[0];
+	isrs[1] = rtwpci->isrs[1];
+
+	printk("interrupt 0: 0x%08x, interrupt 1: 0x%08x\n", isrs[0], isrs[1]);
 
 	/* TX ISR */
-	if (intrs[0] & B_AX_TXDMA_ACH0_INT)
+	if (isrs[0] & B_AX_TXDMA_ACH0_INT)
 		rtw89_pci_isr_txch_dma(rtwdev, rtwpci, RTW89_PCI_TXCH_ACH0);
-	if (intrs[0] & B_AX_TXDMA_ACH1_INT)
+	if (isrs[0] & B_AX_TXDMA_ACH1_INT)
 		rtw89_pci_isr_txch_dma(rtwdev, rtwpci, RTW89_PCI_TXCH_ACH1);
-	if (intrs[0] & B_AX_TXDMA_ACH2_INT)
+	if (isrs[0] & B_AX_TXDMA_ACH2_INT)
 		rtw89_pci_isr_txch_dma(rtwdev, rtwpci, RTW89_PCI_TXCH_ACH2);
-	if (intrs[0] & B_AX_TXDMA_ACH3_INT)
+	if (isrs[0] & B_AX_TXDMA_ACH3_INT)
 		rtw89_pci_isr_txch_dma(rtwdev, rtwpci, RTW89_PCI_TXCH_ACH3);
-	if (intrs[0] & B_AX_TXDMA_ACH4_INT)
+	if (isrs[0] & B_AX_TXDMA_ACH4_INT)
 		rtw89_pci_isr_txch_dma(rtwdev, rtwpci, RTW89_PCI_TXCH_ACH4);
-	if (intrs[0] & B_AX_TXDMA_ACH5_INT)
+	if (isrs[0] & B_AX_TXDMA_ACH5_INT)
 		rtw89_pci_isr_txch_dma(rtwdev, rtwpci, RTW89_PCI_TXCH_ACH5);
-	if (intrs[0] & B_AX_TXDMA_ACH6_INT)
+	if (isrs[0] & B_AX_TXDMA_ACH6_INT)
 		rtw89_pci_isr_txch_dma(rtwdev, rtwpci, RTW89_PCI_TXCH_ACH6);
-	if (intrs[0] & B_AX_TXDMA_ACH7_INT)
+	if (isrs[0] & B_AX_TXDMA_ACH7_INT)
 		rtw89_pci_isr_txch_dma(rtwdev, rtwpci, RTW89_PCI_TXCH_ACH7);
-	if (intrs[0] & B_AX_TXDMA_CH8_INT)
+	if (isrs[0] & B_AX_TXDMA_CH8_INT)
 		rtw89_pci_isr_txch_dma(rtwdev, rtwpci, RTW89_PCI_TXCH_CH8);
-	if (intrs[0] & B_AX_TXDMA_CH9_INT)
+	if (isrs[0] & B_AX_TXDMA_CH9_INT)
 		rtw89_pci_isr_txch_dma(rtwdev, rtwpci, RTW89_PCI_TXCH_CH9);
-	if (intrs[0] & B_AX_TXDMA_CH12_INT)
+	if (isrs[0] & B_AX_TXDMA_CH12_INT)
 		rtw89_pci_isr_txch_dma(rtwdev, rtwpci, RTW89_PCI_TXCH_CH12);
-	if (intrs[1] & B_AX_TXDMA_CH10_INT)
+	if (isrs[1] & B_AX_TXDMA_CH10_INT)
 		rtw89_pci_isr_txch_dma(rtwdev, rtwpci, RTW89_PCI_TXCH_CH10);
-	if (intrs[1] & B_AX_TXDMA_CH11_INT)
+	if (isrs[1] & B_AX_TXDMA_CH11_INT)
 		rtw89_pci_isr_txch_dma(rtwdev, rtwpci, RTW89_PCI_TXCH_CH11);
 
 	/* RX ISR */
-	if (intrs[0] & (B_AX_RXDMA_INT | B_AX_RXP1DMA_INT))
+	if (isrs[0] & (B_AX_RXDMA_INT | B_AX_RXP1DMA_INT))
 		rtw89_pci_isr_rxq_dma(rtwdev, rtwpci);
-	if (intrs[0] & B_AX_RPQDMA_INT)
+	if (isrs[0] & B_AX_RPQDMA_INT)
 		rtw89_pci_isr_rpq_dma(rtwdev, rtwpci);
-	if (intrs[0] & B_AX_RDU_INT)
+	if (isrs[0] & B_AX_RDU_INT)
 		rtw89_pci_isr_rxd_unavail(rtwdev, rtwpci);
 
 	spin_lock_irqsave(&rtwpci->irq_lock, flags);
@@ -527,6 +532,7 @@ static irqreturn_t rtw89_pci_interrupt_handler(int irq, void *dev)
 	struct rtw89_pci *rtwpci = (struct rtw89_pci *)rtwdev->priv;
 	unsigned long flags;
 
+	printk("receive interrupt\n");
 	/* Disable interrupt here to avoid more interrupts being issued before
 	 * the threadfn ends.
 	 */
@@ -644,6 +650,7 @@ static int rtw89_pci_txwd_submit(struct rtw89_dev *rtwdev,
 	bool en_wd_info = desc_info->en_wd_info;
 	u32 txwd_len;
 	u32 txwp_len;
+	u32 txaddr_info_len;
 	dma_addr_t dma;
 	int ret;
 
@@ -658,6 +665,7 @@ static int rtw89_pci_txwd_submit(struct rtw89_dev *rtwdev,
 
 	tx_data->dma = dma;
 
+	txaddr_info_len = sizeof(*txaddr_info);
 	txwp_len = sizeof(*txwp_info);
 	txwd_len = sizeof(*txwd_body);
 	txwd_len += en_wd_info ? sizeof(*txwd_info) : 0;
@@ -672,6 +680,13 @@ static int rtw89_pci_txwd_submit(struct rtw89_dev *rtwdev,
 	txaddr_info->length = cpu_to_le16(skb->len);
 	txaddr_info->option = cpu_to_le16(RTW89_PCI_ADDR_MSDU_LS | 1);
 	txaddr_info->dma = cpu_to_le32(dma);
+
+	print_hex_dump_bytes("TXWD DUMP: ", DUMP_PREFIX_OFFSET, txwd->vaddr, 64);
+	printk("\n");
+
+	txwd->len = txwd_len + txwp_len + txaddr_info_len;
+	printk("txwd->len=%3d, txwd_len=%2d, txwp_len=%2d, addr_len=%2d\n",
+		txwd->len, txwd_len, txwp_len, txaddr_info_len);
 
 	skb_queue_tail(&txwd->queue, skb);
 
@@ -1239,6 +1254,7 @@ static int rtw89_pci_alloc_tx_wd_ring(struct rtw89_dev *rtwdev,
 		list_add_tail(&txwd->list, &wd_ring->free_pages);
 		txwd->paddr = cur_paddr;
 		txwd->vaddr = cur_vaddr;
+		txwd->len = page_size;
 		txwd->seq = i;
 
 		page_offset += page_size;

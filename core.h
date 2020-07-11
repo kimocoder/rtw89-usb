@@ -7,6 +7,9 @@
 
 #include <net/mac80211.h>
 #include <linux/bitfield.h>
+#include <linux/firmware.h>
+
+#define RTW89_RF_PATH_MAX 4
 
 /**
  * read_poll_timeout - Periodically poll an address until a condition is
@@ -52,7 +55,50 @@
 	(cond) ? 0 : -ETIMEDOUT; \
 })
 
+/**
+ * read_poll_timeout_atomic - Periodically poll an address until a condition is
+ *			      met or a timeout occurs
+ * @op: accessor function (takes @addr as its only argument)
+ * @addr: Address to poll
+ * @val: Variable to read the value into
+ * @cond: Break condition (usually involving @val)
+ * @delay_us: Time to udelay between reads in us (0 tight-loops).  Should
+ *            be less than ~10us since udelay is used (see
+ *            Documentation/timers/timers-howto.rst).
+ * @timeout_us: Timeout in us, 0 means never timeout
+ * @delay_before_read: if it is true, delay @delay_us before read.
+ *
+ * Returns 0 on success and -ETIMEDOUT upon a timeout. In either
+ * case, the last read value at @args is stored in @val.
+ *
+ * When available, you'll probably want to use one of the specialized
+ * macros defined below rather than this macro directly.
+ */
+#define read_poll_timeout_atomic(op, val, cond, delay_us, timeout_us, \
+					delay_before_read, args...) \
+({ \
+	u64 __timeout_us = (timeout_us); \
+	unsigned long __delay_us = (delay_us); \
+	ktime_t __timeout = ktime_add_us(ktime_get(), __timeout_us); \
+	if (delay_before_read && __delay_us) \
+		udelay(__delay_us); \
+	for (;;) { \
+		(val) = op(args); \
+		if (cond) \
+			break; \
+		if (__timeout_us && \
+		    ktime_compare(ktime_get(), __timeout) > 0) { \
+			(val) = op(args); \
+			break; \
+		} \
+		if (__delay_us) \
+			udelay(__delay_us); \
+	} \
+	(cond) ? 0 : -ETIMEDOUT; \
+})
+
 struct rtw89_dev;
+struct rtw89_fw_bin_info;
 
 extern const struct ieee80211_ops rtw89_ops;
 extern const struct rtw89_chip_info rtw8852a_chip_info;
@@ -65,6 +111,7 @@ enum rtw89_hci_type {
 
 enum rtw89_core_chip_id {
 	RTL8852A,
+	RTL8852B,
 };
 
 enum rtw89_core_tx_type {
@@ -164,6 +211,9 @@ struct rtw89_tx_desc_info {
 	bool is_bmc;
 	bool en_wd_info;
 	bool wd_page;
+	bool use_rate;
+	bool dis_data_fb;
+	u16 data_rate;
 };
 
 struct rtw89_core_tx_request {
@@ -199,8 +249,18 @@ struct rtw89_hci_ops {
 	void (*write16)(struct rtw89_dev *rtwdev, u32 addr, u16 data);
 	void (*write32)(struct rtw89_dev *rtwdev, u32 addr, u32 data);
 
+	u8 (*read8_atomic)(struct rtw89_dev *rtwdev, u32 addr);
+	u16 (*read16_atomic)(struct rtw89_dev *rtwdev, u32 addr);
+	u32 (*read32_atomic)(struct rtw89_dev *rtwdev, u32 addr);
+	void (*write8_atomic)(struct rtw89_dev *rtwdev, u32 addr, u8 val);
+	void (*write16_atomic)(struct rtw89_dev *rtwdev, u32 addr, u16 val);
+	void (*write32_atomic)(struct rtw89_dev *rtwdev, u32 addr, u32 val);
+
 	int (*mac_pre_init)(struct rtw89_dev *rtwdev);
+	int (*mac_init)(struct rtw89_dev *rtwdev);
 	int (*mac_post_init)(struct rtw89_dev *rtwdev);
+
+	int (*write_data_h2c)(struct rtw89_dev *rtwdev, struct sk_buff *skb);
 };
 
 struct rtw89_hci_info {
@@ -209,6 +269,7 @@ struct rtw89_hci_info {
 };
 
 struct rtw89_chip_ops {
+	void (*phy_set_param)(struct rtw89_dev *rtwdev);
 };
 
 enum rtw89_dma_ch {
@@ -229,8 +290,16 @@ enum rtw89_dma_ch {
 };
 
 struct rtw89_chip_info {
+	enum rtw89_core_chip_id chip_id;
 	const struct rtw89_chip_ops *ops;
+	const char *fw_name;
 	u32 fifo_size;
+	u32 physical_size;
+	u32 log_efuse_size;
+	u32 sec_ctrl_efuse_size;
+
+	const struct rtw89_table *bb_tbl;
+	const struct rtw89_table *rf_tbl[RTW89_RF_PATH_MAX];
 };
 
 enum rtw89_qta_mode {
@@ -322,6 +391,10 @@ struct rtw89_mac_info {
 };
 
 struct rtw89_fw_info {
+	const struct firmware *firmware;
+	struct rtw89_dev *rtwdev;
+	struct completion completion;
+	struct rtw89_fw_bin_info *bin_info;
 	u16 ver;
 	u8 sub_ver;
 	u8 sub_idex;
@@ -334,6 +407,97 @@ struct rtw89_fw_info {
 	u8 rec_seq;
 };
 
+struct rtw89_efuse {
+	u32 physical_size;
+	u32 logical_size;
+	u8 pkg_type;
+	u8 rfe_type;
+};
+
+enum rtw89_rf_path {
+	RF_PATH_A = 0,
+	RF_PATH_B = 1,
+	RF_PATH_C = 2,
+	RF_PATH_D = 3,
+};
+
+struct rtw89_phy_cond {
+#ifdef __LITTLE_ENDIAN
+	u32 cut:8;
+	u32 rsvd1:8;
+	u32 rfe:8;
+	u32 rsvd2:4;
+	u32 branch:2;
+	u32 neg:1;
+	u32 pos:1;
+#else
+	u32 pos:1;
+	u32 neg:1;
+	u32 branch:2;
+	u32 rsvd2:4;
+	u32 rfe:8;
+	u32 rsvd1:8;
+	u32 cut:8;
+#endif
+	/* for intf:4 */
+	#define INTF_PCIE	BIT(0)
+	#define INTF_USB	BIT(1)
+	#define INTF_SDIO	BIT(2)
+	/* for branch:2 */
+	#define BRANCH_IF	0
+	#define BRANCH_ELIF	1
+	#define BRANCH_ELSE	2
+	#define BRANCH_ENDIF	3
+};
+
+struct rtw89_phy_cond1 {
+#ifdef __LITTLE_ENDIAN
+	u32 rfe:8;
+	u32 pkg:8;
+	u32 cut:8;
+	u32 rsvd1:4;
+	u32 branch:2;
+	u32 neg:1;
+	u32 pos:1;
+#else
+	u32 pos:1;
+	u32 neg:1;
+	u32 branch:2;
+	u32 rsvd1:4;
+	u32 cut:8;
+	u32 pkg:8;
+	u32 rfe:8;
+#endif
+};
+
+struct rtw89_table {
+	const void *data;
+	const u32 size;
+	void (*parse)(struct rtw89_dev *rtwdev, const struct rtw89_table *tbl);
+	void (*do_cfg)(struct rtw89_dev *rtwdev, const struct rtw89_table *tbl,
+		       u32 addr, u32 data);
+	enum rtw89_rf_path rf_path;
+};
+
+static inline void rtw89_load_table(struct rtw89_dev *rtwdev,
+				    const struct rtw89_table *tbl)
+{
+	(*tbl->parse)(rtwdev, tbl);
+}
+
+struct rtw89_halrf_radio_info {
+#define RADIO_TO_FW_PAGE_SIZE	3
+#define RADIO_TO_FW_DATA_SIZE	512
+	u32 write_times_a;
+	u32 write_times_b;
+	u32 radio_a_parameter[RADIO_TO_FW_PAGE_SIZE][RADIO_TO_FW_DATA_SIZE];
+	u32 radio_b_parameter[RADIO_TO_FW_PAGE_SIZE][RADIO_TO_FW_DATA_SIZE];
+};
+
+struct rtw89_rf_info {
+	struct rtw89_halrf_radio_info radio_info;
+};
+
 struct rtw89_dev {
 	struct ieee80211_hw *hw;
 	struct device *dev;
@@ -341,13 +505,23 @@ struct rtw89_dev {
 	const struct rtw89_chip_info *chip;
 	struct rtw89_mac_info mac;
 	struct rtw89_fw_info fw;
+	struct rtw89_efuse efuse;
 	struct rtw89_hci_info hci;
+	struct rtw89_rf_info rf;
 
 	/* used to protect txqs list */
 	spinlock_t txq_lock;
 	struct list_head txqs;
 	struct tasklet_struct txq_tasklet;
 
+	/* phy */
+	bool dack_done;
+	u8 msbk_d[2][2][16];
+	u8 dadck_d[2][2];
+	u16 addck_d[2][2];
+	u16 biask_d[2][2];
+
+	bool debug;
 	/* HCI related data, keep last */
 	u8 priv[0] __aligned(sizeof(void *));
 };
@@ -373,6 +547,12 @@ static inline void rtw89_hci_stop(struct rtw89_dev *rtwdev)
 	rtwdev->hci.ops->stop(rtwdev);
 }
 
+static inline int rtw89_hci_write_data_h2c(struct rtw89_dev *rtwdev,
+					   struct sk_buff *skb)
+{
+	return rtwdev->hci.ops->write_data_h2c(rtwdev, skb);
+}
+
 static inline u8 rtw89_read8(struct rtw89_dev *rtwdev, u32 addr)
 {
 	return rtwdev->hci.ops->read8(rtwdev, addr);
@@ -386,6 +566,21 @@ static inline u16 rtw89_read16(struct rtw89_dev *rtwdev, u32 addr)
 static inline u32 rtw89_read32(struct rtw89_dev *rtwdev, u32 addr)
 {
 	return rtwdev->hci.ops->read32(rtwdev, addr);
+}
+
+static inline u8 rtw89_read8_atomic(struct rtw89_dev *rtwdev, u32 addr)
+{
+	return rtwdev->hci.ops->read8_atomic(rtwdev, addr);
+}
+
+static inline u16 rtw89_read16_atomic(struct rtw89_dev *rtwdev, u32 addr)
+{
+	return rtwdev->hci.ops->read32_atomic(rtwdev, addr);
+}
+
+static inline u32 rtw89_read32_atomic(struct rtw89_dev *rtwdev, u32 addr)
+{
+	return rtwdev->hci.ops->read32_atomic(rtwdev, addr);
 }
 
 static inline void rtw89_write8(struct rtw89_dev *rtwdev, u32 addr, u8 data)
@@ -402,6 +597,25 @@ static inline void rtw89_write32(struct rtw89_dev *rtwdev, u32 addr, u32 data)
 {
 	rtwdev->hci.ops->write32(rtwdev, addr, data);
 }
+
+static inline
+void rtw89_write8_atomic(struct rtw89_dev *rtwdev, u32 addr, u8 val)
+{
+	rtwdev->hci.ops->write8_atomic(rtwdev, addr, val);
+}
+
+static inline
+void rtw89_write16_atomic(struct rtw89_dev *rtwdev, u32 addr, u16 val)
+{
+	rtwdev->hci.ops->write16_atomic(rtwdev, addr, val);
+}
+
+static inline
+void rtw89_write32_atomic(struct rtw89_dev *rtwdev, u32 addr, u32 val)
+{
+	rtwdev->hci.ops->write32_atomic(rtwdev, addr, val);
+}
+
 
 static inline void
 rtw89_write8_set(struct rtw89_dev *rtwdev, u32 addr, u8 bit)

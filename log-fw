@@ -1,0 +1,98 @@
+               usb endpoint descriptor (0):
+[22470.010257] bLength=7
+[22470.010257] bDescriptorType=5
+[22470.010258] bEndpointAddress=84
+[22470.010258] wMaxPacketSize=1024
+[22470.010259] bInterval=0
+[22470.010259] 
+               usb endpoint descriptor (1):
+[22470.010260] bLength=7
+[22470.010260] bDescriptorType=5
+[22470.010261] bEndpointAddress=5
+[22470.010261] wMaxPacketSize=1024
+[22470.010262] bInterval=0
+[22470.010262] 
+               usb endpoint descriptor (2):
+[22470.010263] bLength=7
+[22470.010263] bDescriptorType=5
+[22470.010263] bEndpointAddress=6
+[22470.010264] wMaxPacketSize=1024
+[22470.010264] bInterval=0
+[22470.010265] 
+               usb endpoint descriptor (3):
+[22470.010265] bLength=7
+[22470.010266] bDescriptorType=5
+[22470.010266] bEndpointAddress=7
+[22470.010266] wMaxPacketSize=1024
+[22470.010267] bInterval=0
+[22470.010267] 
+               usb endpoint descriptor (4):
+[22470.010268] bLength=7
+[22470.010268] bDescriptorType=5
+[22470.010268] bEndpointAddress=9
+[22470.010269] wMaxPacketSize=1024
+[22470.010269] bInterval=0
+[22470.010270] 
+               usb endpoint descriptor (5):
+[22470.010270] bLength=7
+[22470.010271] bDescriptorType=5
+[22470.010271] bEndpointAddress=a
+[22470.010271] wMaxPacketSize=1024
+[22470.010272] bInterval=0
+[22470.010272] 
+               usb endpoint descriptor (6):
+[22470.010273] bLength=7
+[22470.010273] bDescriptorType=5
+[22470.010273] bEndpointAddress=b
+[22470.010274] wMaxPacketSize=1024
+[22470.010274] bInterval=0
+[22470.010275] 
+               usb endpoint descriptor (7):
+[22470.010275] bLength=7
+[22470.010276] bDescriptorType=5
+[22470.010276] bEndpointAddress=c
+[22470.010276] wMaxPacketSize=1024
+[22470.010277] bInterval=0
+[22470.010277] USB_SPEED_SUPER
+[22470.010278] rtw_usb_interface_configure : bulkout_size: 1024
+[22470.010664] ieee80211 phy7: Selected rate control algorithm 'minstrel_ht'
+[22470.010939] usbcore: registered new interface driver rtw89_usb
+[22470.035543] rtw89_mac_init ==>
+[22470.035549] mac power switch
+[22470.035583] rtw89_mac_power_switch: 0x3F1 val=1
+[22470.035586] rtw89_usb 3-1:1.2: MAC has already powered on
+[22470.036906] rtw89_mac_power_switch: 0x3F1 val=1
+[22470.037138] rtw89_mac_power_switch: 0x3F1 val=0
+[22470.042189] rtw89_fw_request_cb: firmware size=207664
+[22470.042192] rtw89_usb 3-1:1.2: FW ver:2.4.0
+[22470.042194] rtw89_usb 3-1:1.2: FW build time: 2020/3/26 13:41
+[22470.042480] mac enable cpu
+[22470.042840] TODO: rtw89_usb_ops_mac_pre_init ====>
+[22470.042841] mac sys init
+[22470.043120] mac trx init
+[22470.043121] rtw89_mac_trx_init: dmac_init
+[22470.043121] dmac_init: dle_init
+[22470.043161] rtw89_usb 3-1:1.2: get_dle_mem_cfg: rtw8852a_dle_mem_usb
+[22470.044441] dmac_init: hfc_init
+[22470.044443] rtw89_usb 3-1:1.2: hfc param init usb, qta_mode:1
+[22470.047322] dmac_init: sta_sch_init
+[22470.047561] dmac_init: mpdu_proc_init
+[22470.047799] dmac_init: sec_eng_init
+[22470.048094] dmac_init: <===
+[22470.048095] rtw89_mac_trx_init: cmac_init
+[22470.049212] rtw89_mac_trx_init: rtw89_mac_dbcc_enable
+[22470.050422] rtw89_usb 3-1:1.2: get_dle_mem_cfg: rtw8852a_dle_mem_usb
+[22470.053861] rtw89_mac_trx_init: rtw89_mac_enable_imr: DMAC
+[22470.054300] rtw89_mac_trx_init: rtw89_mac_enable_imr: CMAC
+[22470.054620] rtw89_mac_trx_init <===
+[22470.054620] wait request firmware
+[22470.054621] download firmware
+[22470.054660] fwdl_phase0 success
+[22470.054661] TODO: rtw89_fw_send_h2c, len:80
+[22470.054663] fw h2c: 00000000: 01 00 52 88 02 00 04 00 43 b2 39 33 20 10 50 00  ..R.....C.93 .P.
+[22470.054664] fw h2c: 00000010: 03 1a 0d 29 e4 07 00 00 00 03 10 00 e4 07 00 00  ...)............
+[22470.054665] fw h2c: 00000020: 00 00 97 b8 80 e0 02 02 00 00 00 00 00 00 00 00  ................
+[22470.054666] fw h2c: 00000030: 00 00 e1 b8 a0 46 00 01 00 00 00 00 00 00 00 00  .....F..........
+[22470.054667] fw h2c: 00000040: 08 7c e1 b8 c0 03 00 29 00 00 00 00 00 00 00 00  .|.....)........
+[22470.054667] rtw89_mac_init: stop here first
+[22470.054669] rtw89_usb 3-1:1.2: mac init fail, ret:-22
